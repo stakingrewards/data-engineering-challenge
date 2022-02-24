@@ -1,46 +1,55 @@
-# Overview
+# The Journey
 
-There is no time limit to completing this exercise, however, we recommend you aim to spend in the region of 2 hours on it. Once you have finished - and are happy with your solution - give us a shout.
+The environment we have at Staking Rewards and the engineers you'll work with dictate these three expectations:
 
-## Description
+1. You're a well-rounded engineer
+2. Comfortable in unfamiliar situations
+3. And have an unquenchable thirst for knowledge
 
-Given we want to store historic data series for:
+This is why we're calling this a journey not a challenge. We'd like you to venture
+into an uncharted territory, have fun while doing it and treat yourself to a difficult but
+interesting engineering task.
 
-- an unlimited timeframe
-- a potential growth in size of 100x
-- a frequency of one hour
-- a metric defined by a unique identifier (blockchain address), a key (label) and a value (numeric)
+This means we don't expect you to compete the task, unless you're absolutely intrigued by it, have or can
+develop the skills in the alloted time and don't like to leave things unfinished which
+gives you more plus points obviously.
 
-And given, we want to read those metrics for charts with the following requirements:
+However, the purpose is to see what you could accomplish on a tight time budget, working in a technology you're unfamiliar with, doing a task that on the surface, looks like a hellish uphill climb. It isn't. 
 
-- a chart for a single metric
-- a certain timeframe (e.g. last 90 days, last year, etc.)
-- a maximum of 1000 points per chart (aggregate)
-- response time of max 200ms
+Did I lose you? No, wonderful! Grab yourself some coffee, or tea for that matter and dive right in.
 
-For the above specs, draw an architecture diagram with your technology and design choices.
+## Spreadsheets
 
-Write a service/pipeline to output a data series for an aggregated data set from the database and a CSV file in this format (one value per day, random price change increasing to 1.000):
+> Trivia: Did you know that the concept of electronic spreadsheets dates back to 1961
+> when it was first outlined in a paper titled "Budgeting Models and System Simulation" by Richard Mattessich
 
-    date, price
-    2019-01-01, 0.001
-    2019-01-02, 0.002
-    2019-01-03, 0.003
-    ...
-    2022-01-01, 1.000
+Pretty neat huh? Yeah, that's straight from Wikipedia. It's a fun read if you're into that kind of thing but in any case, back to the task.
 
-The aggregate should be the value (each hour) for the address `0x123` and the key `balance` multiplied by the price from the CSV.
+### Task
 
-## Task
+You're given a CSV file, titled `transactions.csv`. If you have a keen eye and inspect the contents of the file 
+you'll realize that this isn't a traditional comma-separated values file. 
 
-- Fork the repository in your private Github account
-- Draw the diagram and write teh service
-- Push and send us the link (optional raise a PR)
+- The delimiter is the pipe operator `|`
+- Named columns have an exclamation mark prefix `!`
+- Named columns appear anywhere in the file as long as they maintain the same column count
+- Cells can have equations prefixed with `=`
 
-## Bonus
+The goal is to take `transactions.csv` and compute what needs to be computed producing a file
+that contains all the static values + all the equations resolved.
 
-If the task is too simple or your're bored, you can do the following bonuses:
+### Operations & Equations
 
-- Test your code or design a testing strategy
-- Benchmark different storage engines
-- Set up infrastructure as code
+Any computable expression in the CSV must be prefixed with `=`. The expression
+language is very similar to excel formulas, it supports basic arithmetic expressions 
+as well as function calls that provide additional features like comparisons,
+string concatenations and other useful utility functions.
+
+#### Operations
+
+- `^^` Copies the formula from the cell above in the same column, with some special evaluation rules
+- `(A..Z)n` references a cell by a combination of a column-letter+row-number. Ex: A2 B3
+- `A^` copies the evaluated result of the cell above in the same column
+- `!label` Columns can have labels, which allows this ability to have different column groups in the same file as long as the number of columns stays consistent
+- `A^v` copies the evaluated result of the last cell in the specified column from the most recently available column group that has data in that specified column
+- `@label<n>` References a specific labeled column and a specific row `n` under that column relative to where the column was labeled. This is a reference operator with relative row traversal
