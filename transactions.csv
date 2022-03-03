@@ -7,4 +7,4 @@
 !adjusted_cost||||
 =E^v+(E^v*A6)||||
 !cost_too_high||||
-=text(bte(@adjusted_cost<1>, @cost_threshold<1>)
+=text(bte(@adjusted_cost<1>, @cost_threshold<1>)||||
