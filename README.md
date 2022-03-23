@@ -38,6 +38,8 @@ you'll realize that this isn't a traditional comma-separated values file.
 The goal is to take `transactions.csv` and compute what needs to be computed producing a file
 that contains all the static values + all the equations resolved.
 
+We ask you to do this in a language you are not familiar with.
+
 ### Operations & Equations
 
 Any computable expression in the CSV must be prefixed with `=`. The expression
