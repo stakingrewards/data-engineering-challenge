@@ -1,34 +1,7 @@
-# The Journey
+# Spreadsheets
 
-The environment we have at Staking Rewards and the engineers you'll work with dictate these three expectations:
-
-1. You're a well-rounded engineer
-2. Comfortable in unfamiliar situations
-3. And have an unquenchable thirst for knowledge
-
-This is why we're calling this a journey not a challenge. We'd like you to venture
-into an uncharted territory, have fun while doing it and treat yourself to a difficult but
-interesting engineering task.
-
-This means we don't expect you to compete the task, unless you're absolutely intrigued by it, have or can
-develop the skills in the alloted time and don't like to leave things unfinished which
-gives you more plus points obviously.
-
-However, the purpose is to see what you could accomplish on a tight time budget, working in a technology you're unfamiliar with, doing a task that on the surface, looks like a hellish uphill climb. It isn't. 
-
-Did I lose you? No, wonderful! Grab yourself some coffee, or tea for that matter and dive right in.
-
-## Spreadsheets
-
-> Trivia: Did you know that the concept of electronic spreadsheets dates back to 1961
-> when it was first outlined in a paper titled "Budgeting Models and System Simulation" by Richard Mattessich
-
-Pretty neat huh? Yeah, that's straight from Wikipedia. It's a fun read if you're into that kind of thing but in any case, back to the task.
-
-### Task
-
-You're given a CSV file, titled `transactions.csv`. If you have a keen eye and inspect the contents of the file 
-you'll realize that this isn't a traditional comma-separated values file. 
+You're given a CSV file, titled `transactions.csv`. If you have a keen eye and inspect the contents of the file
+you'll realize that this isn't a traditional comma-separated values file.
 
 - The delimiter is the pipe operator `|`
 - Named columns have an exclamation mark prefix `!`
@@ -43,7 +16,7 @@ We ask you to do this in a language you are not familiar with.
 ### Operations & Equations
 
 Any computable expression in the CSV must be prefixed with `=`. The expression
-language is very similar to excel formulas, it supports basic arithmetic expressions 
+language is very similar to excel formulas, it supports basic arithmetic expressions
 as well as function calls that provide additional features like comparisons,
 string concatenations and other useful utility functions.
 
