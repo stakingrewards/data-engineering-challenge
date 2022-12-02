@@ -1,26 +1,103 @@
-### Task
+# Task
 
-You're given a simple design for a spreadsheet application, located [here](): link. We ask you to build a browser based spreadsheet application according to it.
-The cells should allow you to insert constants or operators, which will be avaluated on the fly.
-A list of supported operations and equations can be found below.
+Build a simple spreadsheet application. You wont be recreating excel don't worry. We expect
+a reactive grid of inputs that auto-saves user inputs over time.
 
-To spice up your journey, there was a little server prepared for you to implement an autosave feature.
-The docker image for the server lives [here](https://hub.docker.com/r/stakingrewards/engineering-frontend-challenge).
-It exposes two endpoints, to save the spreadsheet data and get the status of the save request. Unfortunately, the server is very slow and kinda buggy.
-We need you to take into account that the saving happens asynchronously and might even result in an error.
+You're provided with
 
-### Operations & Equations
+- A design in Figma, [located here]()
+- A server as a docker image, [located here](https://hub.docker.com/r/stakingrewards/engineering-frontend-challenge)
+
+## What we're looking for
+
+- UI implementation as close to the design as possible
+
+Feel free to improve things _you think_ should be better
+
+- Auto-saving user input
+
+- Reactive UI
+
+- Performant UI with emphasis on a friendly UX
+
+Don't confuse the user, if you feel there's a missing design element that aids in this, add it.
+
+We also don't expect you to stress test the UI, but your solutions
+will give hints to potential performance issues. So be mindful of that.
+
+- Build around limitations
+
+The server is buggy and slow, you still need to aim for an exceptional experience
+
+- Make good decisions
+
+You'll be evaluated based on your design implementation choices, code implementation choices and
+the solutions you bring to the table
+
+> We can only evaluate what you put forth, our evaluation will be incomplete if you provide an incomplete solution. If time is a bottleneck, feel free to ask for more time and we're happy to negotiate... Just like in a real, working environment ;)
+
+## Time
+
+Speaking of time, we feel the task should not take you more than 3 working days.
+We could be wrong.
+
+### The Server
+
+It's slow, buggy and it's all by design. Your UI implementation has to account for these
+facts, the server will randomly throw errors and will randomly introduce latencies.
+
+The server only allows you to "save" a spreadsheet by sending the values as a CSV blob. This
+will help you implement auto-saving.
+
+---
+
+```
+// Reference server documentation
+```
+
+---
+
+### The UI
+
+We expect you to compute the spreadsheet formulas on the client side. The simple expression
+language is defined below.
+
+The UI needs to be reactive, as you would expect in any spreadsheet software. Expressions in
+a cell are computed in `onblur` events. Expressions that reference cells for values whose values
+change must result in a recomputation of the expression in the relevant places.
+
+**Expressions**
 
 Any computable expression in the spreadsheet must be prefixed with `=`. The expression
-language is very similar to excel formulas, it supports basic arithmetic expressions
-as well as function calls that provide additional features like comparisons,
-string concatenations and other useful utility functions.
+language supports basic arithmetic expressions as well as value references.
 
-#### Operations
+Arithmetics look like this (If you want to go the extra mile, add support for floats)
 
-- `^^` Copies the formula from the cell above in the same column, with some special evaluation rules
-- `(A..Z)n` references a cell by a combination of a column-letter+row-number. Ex: A2 B3
-- `A^` copies the evaluated result of the cell above in the same column
-- `!label` Columns can have labels, which allows this ability to have different column groups in the same file as long as the number of columns stays consistent
-- `A^v` copies the evaluated result of the last cell in the specified column from the most recently available column group that has data in that specified column
-- `@label<n>` References a specific labeled column and a specific row `n` under that column relative to where the column was labeled. This is a reference operator with relative row traversal
+```
+=1 + 2 * (42.42 / 1)
+```
+
+Value references look like this
+
+```
+=(A..Z)n+
+```
+
+where A to Z are column labels and `n+` is row number. The notation of `n+` simply
+implies that row numbers in value references can have multiple digits. Both `A0`
+and `A10` are valid value references. However, `A00` and `A010` means the same as `A0` and `A10` respectively.
+
+Value references can be used in place of numbers, the letter (column-label) should have no
+space between it and the row-number.
+
+## Technology
+
+We work in React and Nextjs using both Javascript and Typescript. We expect the solution to be React based even if you're
+not exceptionally familiar with React. React, in the end of the day, is a Javascript library. If you know Javascript, then
+we trust you'll find React's documentation easy to follow.
+
+The choice between Javasript or Typescript is up to you.
+
+## Submission
+
+Please submit your working code as a Github repo link with instructions on how to run the project.
