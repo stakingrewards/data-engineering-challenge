@@ -49,13 +49,7 @@ facts, the server will randomly throw errors and will randomly introduce latenci
 The server only allows you to "save" a spreadsheet by sending the values as a CSV blob. This
 will help you implement auto-saving.
 
----
-
-```
-// Reference server documentation
-```
-
----
+The API is [documented here](./api.md)
 
 ### The UI
 
