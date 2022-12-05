@@ -5,7 +5,7 @@ a reactive grid of inputs that auto-saves user inputs over time.
 
 You're provided with
 
-- A design in Figma, [located here]()
+- A design in Figma, [located here](https://www.figma.com/file/ID54ipGCsghCKyAHBKgshE/Challenges?node-id=0%3A1&t=tLMYNico0EBK9bHq-1)
 - A server as a docker image, [located here](https://hub.docker.com/r/stakingrewards/engineering-frontend-challenge)
 
 ## What we're looking for
