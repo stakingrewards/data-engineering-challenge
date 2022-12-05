@@ -25,9 +25,6 @@ Did I lose you? No, wonderful! Grab yourself some coffee, or tea for that matter
 
 Pretty neat huh? Yeah, that's straight from Wikipedia. It's a fun read if you're into that kind of thing but in any case, back to the task.
 
-## Instructions
+## Kick-off
 
-To kick off your journey, just check out the frontend or backend branch depending on whatever challenge you'd like to solve. The technical instructions can be found in there.
-
-To complete the challenge, you have one week of time. Use it wisely.
-Once you decide, that you are done and you did your best, send uns the code to talent@stakingrewards.com.
+To kick off your journey, please check out the frontend or the backend branches depending on what you applied for.
