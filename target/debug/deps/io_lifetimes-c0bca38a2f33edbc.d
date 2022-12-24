@@ -1,0 +1,10 @@
+/Users/rafaelbeckel/Library/CloudStorage/Dropbox/projects/Go/staking-rewards-spreadsheets-challenge/target/debug/deps/io_lifetimes-c0bca38a2f33edbc.rmeta: /Users/rafaelbeckel/.cargo/registry/src/github.com-1ecc6299db9ec823/io-lifetimes-1.0.3/src/lib.rs /Users/rafaelbeckel/.cargo/registry/src/github.com-1ecc6299db9ec823/io-lifetimes-1.0.3/src/portability.rs /Users/rafaelbeckel/.cargo/registry/src/github.com-1ecc6299db9ec823/io-lifetimes-1.0.3/src/traits.rs /Users/rafaelbeckel/.cargo/registry/src/github.com-1ecc6299db9ec823/io-lifetimes-1.0.3/src/example_ffi.rs /Users/rafaelbeckel/.cargo/registry/src/github.com-1ecc6299db9ec823/io-lifetimes-1.0.3/src/raw.rs /Users/rafaelbeckel/.cargo/registry/src/github.com-1ecc6299db9ec823/io-lifetimes-1.0.3/src/views.rs
+
+/Users/rafaelbeckel/Library/CloudStorage/Dropbox/projects/Go/staking-rewards-spreadsheets-challenge/target/debug/deps/io_lifetimes-c0bca38a2f33edbc.d: /Users/rafaelbeckel/.cargo/registry/src/github.com-1ecc6299db9ec823/io-lifetimes-1.0.3/src/lib.rs /Users/rafaelbeckel/.cargo/registry/src/github.com-1ecc6299db9ec823/io-lifetimes-1.0.3/src/portability.rs /Users/rafaelbeckel/.cargo/registry/src/github.com-1ecc6299db9ec823/io-lifetimes-1.0.3/src/traits.rs /Users/rafaelbeckel/.cargo/registry/src/github.com-1ecc6299db9ec823/io-lifetimes-1.0.3/src/example_ffi.rs /Users/rafaelbeckel/.cargo/registry/src/github.com-1ecc6299db9ec823/io-lifetimes-1.0.3/src/raw.rs /Users/rafaelbeckel/.cargo/registry/src/github.com-1ecc6299db9ec823/io-lifetimes-1.0.3/src/views.rs
+
+/Users/rafaelbeckel/.cargo/registry/src/github.com-1ecc6299db9ec823/io-lifetimes-1.0.3/src/lib.rs:
+/Users/rafaelbeckel/.cargo/registry/src/github.com-1ecc6299db9ec823/io-lifetimes-1.0.3/src/portability.rs:
+/Users/rafaelbeckel/.cargo/registry/src/github.com-1ecc6299db9ec823/io-lifetimes-1.0.3/src/traits.rs:
+/Users/rafaelbeckel/.cargo/registry/src/github.com-1ecc6299db9ec823/io-lifetimes-1.0.3/src/example_ffi.rs:
+/Users/rafaelbeckel/.cargo/registry/src/github.com-1ecc6299db9ec823/io-lifetimes-1.0.3/src/raw.rs:
+/Users/rafaelbeckel/.cargo/registry/src/github.com-1ecc6299db9ec823/io-lifetimes-1.0.3/src/views.rs:
