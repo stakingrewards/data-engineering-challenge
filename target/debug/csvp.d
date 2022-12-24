@@ -1,1 +1,0 @@
-/Users/rafaelbeckel/Library/CloudStorage/Dropbox/projects/Go/staking-rewards-spreadsheets-challenge/target/debug/csvp: /Users/rafaelbeckel/Library/CloudStorage/Dropbox/projects/Go/staking-rewards-spreadsheets-challenge/src/main.rs
