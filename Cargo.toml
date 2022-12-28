@@ -3,6 +3,7 @@ name = "csvp"
 description = "A simple CSV parser"
 version = "0.1.0"
 edition = "2021"
+authors = ["Rafael Beckel <rafaelbeckel@gmail.com>"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -11,6 +12,8 @@ anyhow = "1.0"
 clap = { version = "4.0", features = ["derive"] }
 env_logger = "0.10"
 log = "0.4"
+regex = "1.7"
+thiserror = "1.0"
 
 [dev-dependencies]
 assert_cmd = "2.0.7"
