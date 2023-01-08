@@ -7,7 +7,7 @@ pub enum FilesystemError {
 }
 
 #[derive(Error, Debug)]
-pub enum SpreadsheetError {
+pub enum SyntaxError {
     #[error("too many columns in line {line}. Expected {expected} but found {found}")]
     TooManyColumns {
         line: usize,
@@ -21,4 +21,7 @@ pub enum SpreadsheetError {
         expected: usize,
         found: usize,
     },
+
+    #[error("invalid label reference: {content}")]
+    InvalidLabelReference { content: String },
 }
