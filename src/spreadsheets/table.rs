@@ -100,7 +100,9 @@ impl Table {
 
     fn add_cell(&mut self, row: usize, column: usize, content: &str) {
         let index = self.cells.len();
-        let cell = Cell::new(row, column, content.trim());
+        let mut cell = Cell::new(row, column, content.trim());
+
+        cell.calculate();
 
         self.cells_map.insert(cell.hash.clone(), index);
         if let Some(label) = cell.label.clone() {

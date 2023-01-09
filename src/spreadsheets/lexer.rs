@@ -11,7 +11,10 @@ pub enum Token {
     RangeSelector,
     Comma,
     Number(f64),
-    Text(String),
+    String(String),
+
+    // formula_name(arg1, arg2, ...) calls a formula
+    Formula(String), // =sum(A1:A2) or =sum(A1, A2)
 
     // (A..Z)n references a cell by position
     CellReference(String), // ex: A1, B2, etc.
@@ -27,9 +30,6 @@ pub enum Token {
 
     // ^^ Copies the formula from the cell above in the same column
     CopyAndIncrementsFormula, // ^^
-
-    // formula_name(arg1, arg2, ...) calls a formula
-    Formula(String), // =sum(A1:A2) or =sum(A1, A2)
 }
 
 pub struct Lexer;
@@ -37,8 +37,7 @@ pub struct Lexer;
 impl Lexer {
     pub fn tokenize(content: &str) -> Vec<Token> {
         let mut tokens = Vec::new();
-        let binding = content.to_uppercase();
-        let mut chars = binding.chars().peekable();
+        let mut chars = content.chars().peekable();
 
         while let Some(c) = chars.next() {
             match c {
@@ -50,10 +49,12 @@ impl Lexer {
                 ')' => tokens.push(Token::CloseParenthesis),
                 ':' => tokens.push(Token::RangeSelector),
                 ',' => tokens.push(Token::Comma),
-                '^' => Self::tokenize_copy_and_increment_formula(&mut chars, &mut tokens),
                 '@' => Self::tokenize_label_reference(&mut chars, &mut tokens),
-                'A'..='Z' => Self::tokenize_formula_or_cell_reference(&mut chars, &mut tokens, c),
+                '^' => Self::tokenize_copy_and_increment(&mut chars, &mut tokens),
+                'A'..='Z' | 'a'..='z' => Self::tokenize_formula_or_cell(&mut chars, &mut tokens, c),
+                '"' | '\'' => Self::tokenize_string(&mut chars, &mut tokens, c),
                 '0'..='9' => Self::tokenize_number(&mut chars, &mut tokens, c),
+                '!' => panic!("Label identifier is not allowed in formulas"),
                 _ => (),
             }
         }
@@ -61,7 +62,7 @@ impl Lexer {
         tokens
     }
 
-    fn tokenize_copy_and_increment_formula(chars: &mut Peekable<Chars>, tokens: &mut Vec<Token>) {
+    fn tokenize_copy_and_increment(chars: &mut Peekable<Chars>, tokens: &mut Vec<Token>) {
         if let Some(&c) = chars.peek() {
             match c {
                 '^' => {
@@ -73,13 +74,26 @@ impl Lexer {
         }
     }
 
+    fn tokenize_string(chars: &mut Peekable<Chars>, tokens: &mut Vec<Token>, quote: char) {
+        let mut text = String::new();
+
+        while let Some(c) = chars.next() {
+            if c == quote {
+                break;
+            }
+            text.push(c);
+        }
+
+        tokens.push(Token::String(text));
+    }
+
     fn tokenize_label_reference(chars: &mut Peekable<Chars>, tokens: &mut Vec<Token>) {
         let mut label = String::new();
         let mut n_rows = String::new();
 
         while let Some(c) = chars.next() {
             match c {
-                'A'..='Z' => {
+                'a'..='z' | 'A'..='Z' | '_' => {
                     label.push(c);
                 }
                 '0'..='9' => {
@@ -101,19 +115,16 @@ impl Lexer {
         });
     }
 
-    fn tokenize_formula_or_cell_reference(
-        chars: &mut Peekable<Chars>,
-        tokens: &mut Vec<Token>,
-        ch: char,
-    ) {
+    fn tokenize_formula_or_cell(chars: &mut Peekable<Chars>, tokens: &mut Vec<Token>, ch: char) {
         let mut text = String::new();
         let mut is_reference = false;
-        text.push(ch);
+
+        text.push(uppercase_char(ch));
 
         while let Some(&c) = chars.peek() {
             match c {
-                'A'..='Z' => {
-                    text.push(c);
+                'A'..='Z' | 'a'..='z' => {
+                    text.push(uppercase_char(c));
                     chars.next();
                     if is_reference {
                         panic!("References must end with a number: {}", text);
@@ -130,7 +141,7 @@ impl Lexer {
                     }
 
                     match text.as_str() {
-                        "SUM" | "SPLIT" | "GTE" | "LTE" | "TEXT" => {
+                        "SUM" | "SPLIT" | "GTE" | "LTE" | "TEXT" | "CONCAT" | "INCFROM" => {
                             tokens.push(Token::Formula(text.to_lowercase()))
                         }
                         _ => panic!("Unknown formula: {}", text),
@@ -149,7 +160,7 @@ impl Lexer {
                     chars.next();
                     if let Some(&c) = chars.peek() {
                         match c {
-                            'V' => {
+                            'v' | 'V' => {
                                 chars.next();
                                 tokens.push(Token::CopyLastResult { column: text });
                             }
@@ -190,6 +201,14 @@ impl Lexer {
 
         tokens.push(Token::Number(number.parse::<f64>().unwrap()));
     }
+}
+
+fn uppercase_char(c: char) -> char {
+    c.to_uppercase()
+        .collect::<Vec<char>>()
+        .first()
+        .unwrap()
+        .to_owned()
 }
 
 #[cfg(test)]
@@ -238,7 +257,7 @@ mod tests {
 
     #[test]
     fn test_tokenize_label_reference() {
-        let content = String::from("=sum(A1,A2)+@label<2>");
+        let content = String::from("=sum(A1, A2)+@label<2>");
         let tokens = Lexer::tokenize(&content);
 
         assert_eq!(
@@ -260,8 +279,35 @@ mod tests {
     }
 
     #[test]
+    fn test_tokenize_multiple_label_references() {
+        let content = String::from("=text(gte(@adjusted_cost<1>, @cost_threshold<1>))");
+        let tokens = Lexer::tokenize(&content);
+
+        assert_eq!(
+            tokens,
+            vec![
+                Token::Formula(String::from("text")),
+                Token::OpenParenthesis,
+                Token::Formula(String::from("gte")),
+                Token::OpenParenthesis,
+                Token::LabelReference {
+                    label: String::from("adjusted_cost"),
+                    n_rows: 1,
+                },
+                Token::Comma,
+                Token::LabelReference {
+                    label: String::from("cost_threshold"),
+                    n_rows: 1,
+                },
+                Token::CloseParenthesis,
+                Token::CloseParenthesis,
+            ]
+        );
+    }
+
+    #[test]
     fn test_tokenize_copy_last_result() {
-        let content = String::from("=sum(A1,A2)+A^v");
+        let content = String::from("=sum( A1,AB2)+A^v");
         let tokens = Lexer::tokenize(&content);
 
         assert_eq!(
@@ -271,12 +317,35 @@ mod tests {
                 Token::OpenParenthesis,
                 Token::CellReference(String::from("A1")),
                 Token::Comma,
-                Token::CellReference(String::from("A2")),
+                Token::CellReference(String::from("AB2")),
                 Token::CloseParenthesis,
                 Token::Plus,
                 Token::CopyLastResult {
                     column: String::from("A")
                 },
+            ]
+        );
+    }
+
+    #[test]
+    fn test_multiple_copy_last_result() {
+        let content = String::from("=E^v+(E^v*A9)");
+        let tokens = Lexer::tokenize(&content);
+
+        assert_eq!(
+            tokens,
+            vec![
+                Token::CopyLastResult {
+                    column: String::from("E")
+                },
+                Token::Plus,
+                Token::OpenParenthesis,
+                Token::CopyLastResult {
+                    column: String::from("E")
+                },
+                Token::Multiply,
+                Token::CellReference(String::from("A9")),
+                Token::CloseParenthesis,
             ]
         );
     }
@@ -302,4 +371,55 @@ mod tests {
             ]
         );
     }
+
+    #[test]
+    fn test_tokenize_concat_formula_with_text() {
+        let content = String::from("=concat(\"t_\", text(incFrom(1)))");
+        let tokens = Lexer::tokenize(&content);
+
+        assert_eq!(
+            tokens,
+            vec![
+                Token::Formula(String::from("concat")),
+                Token::OpenParenthesis,
+                Token::String(String::from("t_")),
+                Token::Comma,
+                Token::Formula(String::from("text")),
+                Token::OpenParenthesis,
+                Token::Formula(String::from("incfrom")),
+                Token::OpenParenthesis,
+                Token::Number(1.0),
+                Token::CloseParenthesis,
+                Token::CloseParenthesis,
+                Token::CloseParenthesis,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_tokenize_copy_above_and_nested_formulas() {
+        let content = String::from("=E^+sum(split(D3, \",\"))");
+        let tokens = Lexer::tokenize(&content);
+
+        assert_eq!(
+            tokens,
+            vec![
+                Token::CopyAboveResult {
+                    column: String::from("E")
+                },
+                Token::Plus,
+                Token::Formula(String::from("sum")),
+                Token::OpenParenthesis,
+                Token::Formula(String::from("split")),
+                Token::OpenParenthesis,
+                Token::CellReference(String::from("D3")),
+                Token::Comma,
+                Token::String(String::from(",")),
+                Token::CloseParenthesis,
+                Token::CloseParenthesis,
+            ]
+        );
+    }
+
+    // @todo custom errors instead of panics, so we can test them
 }

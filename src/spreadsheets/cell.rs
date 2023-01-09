@@ -17,7 +17,6 @@ impl Cell {
     pub fn new(row: usize, column: usize, value: &str) -> Self {
         let column_string = assign_column_name(column);
         let hash = format!("{}{}", column_string, row);
-        let label = get_label(value);
         let value = value.to_string();
 
         Cell {
@@ -25,17 +24,30 @@ impl Cell {
             column,
             hash,
             value,
-            label,
+            label: None,
             result: None,
         }
     }
 
     pub fn calculate(&mut self) {
+        self.label = self.get_label();
         self.result = self.get_result();
+    }
+
+    fn is_label(&self) -> bool {
+        self.value.starts_with(LABEL_PREFIX)
     }
 
     fn is_formula(&self) -> bool {
         self.value.starts_with(FORMULA_PREFIX)
+    }
+
+    fn get_label(&self) -> Option<String> {
+        if self.is_label() {
+            return Some(self.value[1..].to_string());
+        }
+
+        None
     }
 
     fn get_result(&self) -> Option<String> {
@@ -46,18 +58,6 @@ impl Cell {
 
         None
     }
-}
-
-fn is_label(value: &str) -> bool {
-    value.starts_with(LABEL_PREFIX)
-}
-
-fn get_label(value: &str) -> Option<String> {
-    if is_label(value) {
-        return Some(value[1..].to_string());
-    }
-
-    None
 }
 
 fn assign_column_name(column: usize) -> String {
