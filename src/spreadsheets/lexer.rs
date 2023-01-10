@@ -1,11 +1,6 @@
 use std::{iter::Peekable, str::Chars};
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct CellReference {
-    pub name: String,
-    pub column: String,
-    pub row: usize, // incrementable
-}
+use crate::spreadsheets::cell::{CellReference, ColumnReference, LabelReference};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
@@ -30,20 +25,13 @@ pub enum Token {
     }, // ex: A1:B2
 
     // @label<n> references a cell that is n rows below a labelled cell
-    LabelReference {
-        label: String,
-        n_rows: usize,
-    }, // ex: @label<1>
+    LabelReference(LabelReference), // ex: @label<1>
 
     // (A..Z)^ copies the evaluated result of the cell above in the same column
-    CopyAboveResult {
-        column: String,
-    }, // ex: A^ (without v)
+    CopyAboveResult(ColumnReference), // ex: A^ (without v)
 
     // (A..Z)^v copies the evaluated result of the last non-empty cell in the column
-    CopyLastResult {
-        column: String,
-    }, // ex: A^v or B^v (with v)
+    CopyLastResult(ColumnReference), // ex: A^v or B^v (with v)
 
     // ^^ Copies the formula from the cell above in the same column
     CopyAndIncrementsFormula, // ^^
@@ -125,10 +113,10 @@ impl Lexer {
             panic!("Invalid label reference");
         }
 
-        tokens.push(Token::LabelReference {
+        tokens.push(Token::LabelReference(LabelReference {
             label: label.to_lowercase(),
             n_rows: n_rows.parse().unwrap(),
-        });
+        }));
     }
 
     fn tokenize_formula(chars: &mut Peekable<Chars>, tokens: &mut Vec<Token>, ch: char) {
@@ -189,13 +177,15 @@ impl Lexer {
                             // The presence of v after ^ inverts the direction of the column reference
                             'v' | 'V' => {
                                 chars.next();
-                                tokens.push(Token::CopyLastResult { column: text });
+                                tokens
+                                    .push(Token::CopyLastResult(ColumnReference { column: text }));
                             }
 
-                            _ => tokens.push(Token::CopyAboveResult { column: text }),
+                            _ => tokens
+                                .push(Token::CopyAboveResult(ColumnReference { column: text })),
                         }
                     } else {
-                        tokens.push(Token::CopyAboveResult { column: text });
+                        tokens.push(Token::CopyAboveResult(ColumnReference { column: text }));
                     }
 
                     break;
@@ -401,10 +391,10 @@ mod tests {
                 }),
                 Token::CloseParenthesis,
                 Token::Plus,
-                Token::LabelReference {
+                Token::LabelReference(LabelReference {
                     label: String::from("label"),
                     n_rows: 2,
-                },
+                }),
             ]
         );
     }
@@ -421,15 +411,15 @@ mod tests {
                 Token::OpenParenthesis,
                 Token::Formula(String::from("gte")),
                 Token::OpenParenthesis,
-                Token::LabelReference {
+                Token::LabelReference(LabelReference {
                     label: String::from("adjusted_cost"),
                     n_rows: 1,
-                },
+                }),
                 Token::Comma,
-                Token::LabelReference {
+                Token::LabelReference(LabelReference {
                     label: String::from("cost_threshold"),
                     n_rows: 1,
-                },
+                }),
                 Token::CloseParenthesis,
                 Token::CloseParenthesis,
             ]
@@ -459,9 +449,9 @@ mod tests {
                 }),
                 Token::CloseParenthesis,
                 Token::Plus,
-                Token::CopyLastResult {
+                Token::CopyLastResult(ColumnReference {
                     column: String::from("A")
-                },
+                }),
             ]
         );
     }
@@ -474,14 +464,14 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::CopyLastResult {
+                Token::CopyLastResult(ColumnReference {
                     column: String::from("E")
-                },
+                }),
                 Token::Plus,
                 Token::OpenParenthesis,
-                Token::CopyLastResult {
+                Token::CopyLastResult(ColumnReference {
                     column: String::from("E")
-                },
+                }),
                 Token::Multiply,
                 Token::CellReference(CellReference {
                     name: String::from("A9"),
@@ -516,9 +506,9 @@ mod tests {
                 }),
                 Token::CloseParenthesis,
                 Token::Divide,
-                Token::CopyAboveResult {
+                Token::CopyAboveResult(ColumnReference {
                     column: String::from("B")
-                },
+                }),
             ]
         );
     }
@@ -555,9 +545,9 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::CopyAboveResult {
+                Token::CopyAboveResult(ColumnReference {
                     column: String::from("E")
-                },
+                }),
                 Token::Plus,
                 Token::Formula(String::from("sum")),
                 Token::OpenParenthesis,

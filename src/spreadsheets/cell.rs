@@ -1,5 +1,23 @@
 use crate::spreadsheets::calculator::Calculator;
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct CellReference {
+    pub name: String,
+    pub column: String,
+    pub row: usize, // incrementable
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LabelReference {
+    pub label: String,
+    pub n_rows: usize,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ColumnReference {
+    pub column: String,
+}
+
 #[derive(Debug, Clone)]
 pub struct Cell {
     pub row: usize,

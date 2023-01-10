@@ -1,6 +1,8 @@
 use crate::spreadsheets::lexer::Lexer;
 use crate::spreadsheets::parser::{Expression, Parser};
 
+use crate::spreadsheets::cell::{CellReference, ColumnReference, LabelReference};
+
 use anyhow::Result;
 
 pub struct Calculator;
