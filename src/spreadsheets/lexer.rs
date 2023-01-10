@@ -1,6 +1,13 @@
 use std::{iter::Peekable, str::Chars};
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct CellReference {
+    pub name: String,
+    pub column: String,
+    pub row: usize, // incrementable
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum Token {
     Plus,
     Minus,
@@ -8,25 +15,35 @@ pub enum Token {
     Divide,
     OpenParenthesis,
     CloseParenthesis,
-    RangeSelector,
     Comma,
     Number(f64),
     String(String),
-
-    // formula_name(arg1, arg2, ...) calls a formula
-    Formula(String), // =sum(A1:A2) or =sum(A1, A2)
+    Formula(String),
 
     // (A..Z)n references a cell by position
-    CellReference(String), // ex: A1, B2, etc.
+    CellReference(CellReference), // ex: A1, B2, etc.
+
+    // (A..Z)n:[A..Z]n references a range of cells
+    CellRange {
+        start: CellReference,
+        end: CellReference,
+    }, // ex: A1:B2
 
     // @label<n> references a cell that is n rows below a labelled cell
-    LabelReference { label: String, n_rows: usize }, // ex: @label<1>
+    LabelReference {
+        label: String,
+        n_rows: usize,
+    }, // ex: @label<1>
 
     // (A..Z)^ copies the evaluated result of the cell above in the same column
-    CopyAboveResult { column: String }, // ex: A^ (without v)
+    CopyAboveResult {
+        column: String,
+    }, // ex: A^ (without v)
 
     // (A..Z)^v copies the evaluated result of the last non-empty cell in the column
-    CopyLastResult { column: String }, // ex: A^v or B^v (with v)
+    CopyLastResult {
+        column: String,
+    }, // ex: A^v or B^v (with v)
 
     // ^^ Copies the formula from the cell above in the same column
     CopyAndIncrementsFormula, // ^^
@@ -47,12 +64,11 @@ impl Lexer {
                 '/' => tokens.push(Token::Divide),
                 '(' => tokens.push(Token::OpenParenthesis),
                 ')' => tokens.push(Token::CloseParenthesis),
-                ':' => tokens.push(Token::RangeSelector),
                 ',' => tokens.push(Token::Comma),
                 '@' => Self::tokenize_label_reference(&mut chars, &mut tokens),
                 '^' => Self::tokenize_copy_and_increment(&mut chars, &mut tokens),
-                'A'..='Z' | 'a'..='z' => Self::tokenize_formula_or_cell(&mut chars, &mut tokens, c),
                 '"' | '\'' => Self::tokenize_string(&mut chars, &mut tokens, c),
+                'A'..='Z' | 'a'..='z' => Self::tokenize_formula(&mut chars, &mut tokens, c),
                 '0'..='9' => Self::tokenize_number(&mut chars, &mut tokens, c),
                 '!' => panic!("Label identifier is not allowed in formulas"),
                 _ => (),
@@ -115,28 +131,36 @@ impl Lexer {
         });
     }
 
-    fn tokenize_formula_or_cell(chars: &mut Peekable<Chars>, tokens: &mut Vec<Token>, ch: char) {
+    fn tokenize_formula(chars: &mut Peekable<Chars>, tokens: &mut Vec<Token>, ch: char) {
         let mut text = String::new();
-        let mut is_reference = false;
+        let mut column = String::new();
+        let mut is_cell_reference = false;
 
+        // We always start with (A..Z)
         text.push(uppercase_char(ch));
 
         while let Some(&c) = chars.peek() {
             match c {
+                // (A..Z) after a text can be either formula or reference
                 'A'..='Z' | 'a'..='z' => {
                     text.push(uppercase_char(c));
                     chars.next();
-                    if is_reference {
+                    if is_cell_reference {
                         panic!("References must end with a number: {}", text);
                     }
                 }
+
+                // The presence of a number after a text indicates a reference
                 '0'..='9' => {
-                    is_reference = true;
+                    is_cell_reference = true;
                     text.push(c);
+                    column = text.clone();
                     chars.next();
                 }
+
+                // The presence of '(' after a text indicates a formula
                 '(' => {
-                    if is_reference {
+                    if is_cell_reference {
                         panic!("Formulas cannot contain a number: {}", text);
                     }
 
@@ -149,10 +173,12 @@ impl Lexer {
 
                     break;
                 }
+
+                // The presence of the ^ symbol after a text indicates a column reference
                 '^' => {
-                    if is_reference {
+                    if is_cell_reference {
                         panic!(
-                            "The copy symbol ^ expects a column without a row number: {}",
+                            "The column copy symbol ^ expects a column without a row number: {}",
                             text
                         );
                     }
@@ -160,24 +186,104 @@ impl Lexer {
                     chars.next();
                     if let Some(&c) = chars.peek() {
                         match c {
+                            // The presence of v after ^ inverts the direction of the column reference
                             'v' | 'V' => {
                                 chars.next();
                                 tokens.push(Token::CopyLastResult { column: text });
                             }
+
                             _ => tokens.push(Token::CopyAboveResult { column: text }),
                         }
                     } else {
                         tokens.push(Token::CopyAboveResult { column: text });
                     }
+
                     break;
                 }
+
                 _ => {
-                    if is_reference {
-                        tokens.push(Token::CellReference(text));
+                    if is_cell_reference {
+                        let row = text[column.len()..].parse().unwrap();
+                        let start_cell = CellReference {
+                            name: text,
+                            column,
+                            row,
+                        };
+                        Self::tokenize_cell_or_range(chars, tokens, start_cell);
                         break;
                     }
                 }
             }
+        }
+    }
+
+    fn tokenize_cell_or_range(
+        chars: &mut Peekable<Chars>,
+        tokens: &mut Vec<Token>,
+        start_cell: CellReference,
+    ) {
+        if let Some(&c) = chars.peek() {
+            match c {
+                ':' => {
+                    chars.next();
+
+                    if let Some(&c) = chars.peek() {
+                        match c {
+                            'A'..='Z' | 'a'..='z' => {
+                                tokens.push(Token::CellRange {
+                                    start: start_cell,
+                                    end: Self::tokenize_cell(chars),
+                                });
+                            }
+                            _ => panic!("Invalid range"),
+                        }
+                    } else {
+                        panic!("Invalid range");
+                    }
+                }
+                _ => {
+                    tokens.push(Token::CellReference(start_cell));
+                }
+            }
+        } else {
+            tokens.push(Token::CellReference(start_cell));
+        }
+    }
+
+    fn tokenize_cell(chars: &mut Peekable<Chars>) -> CellReference {
+        let mut text = String::new();
+        let mut column = String::new();
+        let mut is_cell_reference = false;
+
+        while let Some(&c) = chars.peek() {
+            match c {
+                'A'..='Z' | 'a'..='z' => {
+                    text.push(uppercase_char(c));
+                    chars.next();
+                    if is_cell_reference {
+                        panic!("References must end with a number: {}", text);
+                    }
+                }
+
+                '0'..='9' => {
+                    is_cell_reference = true;
+                    text.push(c);
+                    column = text.clone();
+                    chars.next();
+                }
+                _ => break,
+            }
+        }
+
+        if is_cell_reference {
+            let row = text[column.len()..].parse().unwrap();
+            CellReference {
+                name: text,
+                column,
+                row,
+            }
+        } else {
+            panic!("Invalid cell reference: {}", text);
         }
     }
 
@@ -225,9 +331,18 @@ mod tests {
             vec![
                 Token::Formula(String::from("sum")),
                 Token::OpenParenthesis,
-                Token::CellReference(String::from("A1")),
-                Token::RangeSelector,
-                Token::CellReference(String::from("A2")),
+                Token::CellRange {
+                    start: CellReference {
+                        name: String::from("A1"),
+                        column: String::from("A"),
+                        row: 1
+                    },
+                    end: CellReference {
+                        name: String::from("A2"),
+                        column: String::from("A"),
+                        row: 2
+                    }
+                },
                 Token::CloseParenthesis,
                 Token::Plus,
                 Token::Number(1.0),
@@ -245,9 +360,17 @@ mod tests {
             vec![
                 Token::Formula(String::from("sum")),
                 Token::OpenParenthesis,
-                Token::CellReference(String::from("A1")),
+                Token::CellReference(CellReference {
+                    name: String::from("A1"),
+                    column: String::from("A"),
+                    row: 1
+                }),
                 Token::Comma,
-                Token::CellReference(String::from("A2")),
+                Token::CellReference(CellReference {
+                    name: String::from("A2"),
+                    column: String::from("A"),
+                    row: 2
+                }),
                 Token::CloseParenthesis,
                 Token::Minus,
                 Token::CopyAndIncrementsFormula,
@@ -265,9 +388,17 @@ mod tests {
             vec![
                 Token::Formula(String::from("sum")),
                 Token::OpenParenthesis,
-                Token::CellReference(String::from("A1")),
+                Token::CellReference(CellReference {
+                    name: String::from("A1"),
+                    column: String::from("A"),
+                    row: 1
+                }),
                 Token::Comma,
-                Token::CellReference(String::from("A2")),
+                Token::CellReference(CellReference {
+                    name: String::from("A2"),
+                    column: String::from("A"),
+                    row: 2
+                }),
                 Token::CloseParenthesis,
                 Token::Plus,
                 Token::LabelReference {
@@ -315,9 +446,17 @@ mod tests {
             vec![
                 Token::Formula(String::from("sum")),
                 Token::OpenParenthesis,
-                Token::CellReference(String::from("A1")),
+                Token::CellReference(CellReference {
+                    name: String::from("A1"),
+                    column: String::from("A"),
+                    row: 1
+                }),
                 Token::Comma,
-                Token::CellReference(String::from("AB2")),
+                Token::CellReference(CellReference {
+                    name: String::from("AB2"),
+                    column: String::from("A"),
+                    row: 2
+                }),
                 Token::CloseParenthesis,
                 Token::Plus,
                 Token::CopyLastResult {
@@ -344,7 +483,11 @@ mod tests {
                     column: String::from("E")
                 },
                 Token::Multiply,
-                Token::CellReference(String::from("A9")),
+                Token::CellReference(CellReference {
+                    name: String::from("A9"),
+                    column: String::from("A"),
+                    row: 9
+                }),
                 Token::CloseParenthesis,
             ]
         );
@@ -360,9 +503,17 @@ mod tests {
             vec![
                 Token::Formula(String::from("sum")),
                 Token::OpenParenthesis,
-                Token::CellReference(String::from("A1")),
+                Token::CellReference(CellReference {
+                    name: String::from("A1"),
+                    column: String::from("A"),
+                    row: 1
+                }),
                 Token::Comma,
-                Token::CellReference(String::from("A2")),
+                Token::CellReference(CellReference {
+                    name: String::from("A2"),
+                    column: String::from("A"),
+                    row: 2
+                }),
                 Token::CloseParenthesis,
                 Token::Divide,
                 Token::CopyAboveResult {
@@ -412,7 +563,11 @@ mod tests {
                 Token::OpenParenthesis,
                 Token::Formula(String::from("split")),
                 Token::OpenParenthesis,
-                Token::CellReference(String::from("D3")),
+                Token::CellReference(CellReference {
+                    name: String::from("D3"),
+                    column: String::from("D"),
+                    row: 3
+                }),
                 Token::Comma,
                 Token::String(String::from(",")),
                 Token::CloseParenthesis,

@@ -21,7 +21,6 @@ pub enum SyntaxError {
         expected: usize,
         found: usize,
     },
-
-    #[error("invalid label reference: {content}")]
-    InvalidLabelReference { content: String },
+    // #[error("invalid label reference: {content}")]
+    // InvalidLabelReference { content: String },
 }
