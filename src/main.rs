@@ -8,7 +8,7 @@ use log::{info, trace};
 mod spreadsheets;
 use spreadsheets::table::Table;
 
-/// Search for a pattern in a file and display the lines that contain it.
+/// Parses an Excel-like CSV file and prints the result to stdout
 #[derive(Debug, Parser)]
 struct Cli {
     /// The path to the CSV file to read
@@ -23,7 +23,7 @@ fn main() -> Result<()> {
 
     let table = Table::from_file(&args.path)?;
     let table = table.borrow();
-    
+
     table.print(&mut stdout()).unwrap();
 
     print_elapsed_time(start);

@@ -1,6 +1,6 @@
 [package]
 name = "cell"
-description = "A simple spreadsheet calculator"
+description = "A simple spreadsheet calculator with a custom grammar"
 version = "0.1.0"
 edition = "2021"
 authors = ["Rafael Beckel <rafaelbeckel@gmail.com>"]
