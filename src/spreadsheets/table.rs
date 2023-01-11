@@ -5,10 +5,9 @@ use std::io::{BufRead, BufReader, Read, Write};
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use anyhow::{Context, Result};
+use anyhow::{ensure, Context, Result};
 
 use crate::spreadsheets::cell::Cell;
-use crate::spreadsheets::error::{FilesystemError, SyntaxError};
 
 const DELIMITER: char = '|';
 
@@ -75,9 +74,8 @@ impl Table {
     }
 
     fn get_file_reader(path: &PathBuf) -> Result<BufReader<File>> {
-        let file = File::open(path).context(FilesystemError::FileNotFound {
-            path: path.display().to_string(),
-        })?;
+        let file =
+            File::open(path).with_context(|| format!("File not found: {}", path.display()))?;
 
         Ok(BufReader::new(file))
     }
@@ -124,24 +122,14 @@ impl Table {
         self.cells.push(cell);
     }
 
-    fn validate_column_count(
-        line: usize,
-        expected: usize,
-        found: usize,
-    ) -> Result<(), SyntaxError> {
-        if expected < found {
-            return Err(SyntaxError::TooManyColumns {
-                line,
-                expected,
-                found,
-            });
-        } else if expected > found {
-            return Err(SyntaxError::NotEnoughColumns {
-                line,
-                expected,
-                found,
-            });
-        }
+    fn validate_column_count(line: usize, expected: usize, found: usize) -> Result<()> {
+        ensure!(
+            expected == found,
+            "invalid column count on line {}. Expected {} but found {}",
+            line,
+            expected,
+            found
+        );
 
         Ok(())
     }
@@ -193,7 +181,7 @@ mod tests {
             Ok(_) => panic!("Expected error"),
             Err(err) => assert_eq!(
                 err.to_string(),
-                "too many columns in line 2. Expected 4 but found 5"
+                "invalid column count on line 2. Expected 4 but found 5"
             ),
         }
     }
@@ -213,7 +201,7 @@ mod tests {
             Ok(_) => panic!("Expected error"),
             Err(err) => assert_eq!(
                 err.to_string(),
-                "not enough columns in line 2. Expected 4 but found 3"
+                "invalid column count on line 2. Expected 4 but found 3"
             ),
         }
     }
