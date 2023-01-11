@@ -22,6 +22,8 @@ fn main() -> Result<()> {
     let args = Cli::parse();
 
     let table = Table::from_file(&args.path)?;
+    let table = table.borrow();
+    
     table.print(&mut stdout()).unwrap();
 
     print_elapsed_time(start);

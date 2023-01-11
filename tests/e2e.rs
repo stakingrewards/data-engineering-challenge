@@ -5,7 +5,7 @@ use std::process::Command; // Run programs
 
 #[test]
 fn file_doesnt_exist() -> Result<(), Box<dyn std::error::Error>> {
-    let mut cmd = Command::cargo_bin("csvp")?;
+    let mut cmd = Command::cargo_bin("cell")?;
 
     cmd.arg("test/file/doesnt/exist");
     cmd.assert().failure().stderr(predicate::str::contains(
@@ -23,15 +23,19 @@ fn prints_file_contents_to_stdout() -> Result<(), Box<dyn std::error::Error>> {
               with | two | lines",
     )?;
 
-    let mut cmd = Command::cargo_bin("csvp")?;
+    let mut cmd = Command::cargo_bin("cell")?;
     cmd.arg(file.path());
-    cmd.assert()
-        .success()
-        .stdout(predicate::str::contains("a|sample|table\nwith|two|lines\n"));
+    cmd.assert().success().stdout(predicate::str::contains(
+        "\n\
+        a    | sample | table\n\
+        with | two    | lines\n\n",
+    ));
 
     Ok(())
 }
 
+// @todo make this test pass (implement eval and increment)
+// The formula sum(1,2,3) should be incremented to sum(2,3,4)
 #[test]
 fn lets_test_some_formulas() -> Result<(), Box<dyn std::error::Error>> {
     let file = assert_fs::NamedTempFile::new("sample.txt")?;
@@ -40,11 +44,13 @@ fn lets_test_some_formulas() -> Result<(), Box<dyn std::error::Error>> {
               with | ^^ | formulas",
     )?;
 
-    let mut cmd = Command::cargo_bin("csvp")?;
+    let mut cmd = Command::cargo_bin("cell")?;
     cmd.arg(file.path());
-    cmd.assert()
-        .success()
-        .stdout(predicate::str::contains("a|6|table\nwith|9|formulas\n"));
+    cmd.assert().success().stdout(predicate::str::contains(
+        "\n\
+        a    | 6 | table\n\
+        with | 9 | formulas\n\n",
+    ));
 
     Ok(())
 }

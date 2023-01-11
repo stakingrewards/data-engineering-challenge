@@ -1,6 +1,6 @@
 [package]
-name = "csvp"
-description = "A simple CSV parser"
+name = "cell"
+description = "A simple spreadsheet calculator"
 version = "0.1.0"
 edition = "2021"
 authors = ["Rafael Beckel <rafaelbeckel@gmail.com>"]

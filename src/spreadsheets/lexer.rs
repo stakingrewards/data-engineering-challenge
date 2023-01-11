@@ -141,8 +141,8 @@ impl Lexer {
                 // The presence of a number after a text indicates a reference
                 '0'..='9' => {
                     is_cell_reference = true;
-                    text.push(c);
                     column = text.clone();
+                    text.push(c);
                     chars.next();
                 }
 
@@ -257,8 +257,8 @@ impl Lexer {
 
                 '0'..='9' => {
                     is_cell_reference = true;
-                    text.push(c);
                     column = text.clone();
+                    text.push(c);
                     chars.next();
                 }
                 _ => break,
@@ -444,7 +444,7 @@ mod tests {
                 Token::Comma,
                 Token::CellReference(CellReference {
                     name: String::from("AB2"),
-                    column: String::from("A"),
+                    column: String::from("AB"),
                     row: 2
                 }),
                 Token::CloseParenthesis,

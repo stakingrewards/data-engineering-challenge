@@ -1,7 +1,9 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::path::PathBuf;
+use std::rc::Rc;
 
 use anyhow::{Context, Result};
 
@@ -10,13 +12,16 @@ use crate::spreadsheets::error::{FilesystemError, SyntaxError};
 
 const DELIMITER: char = '|';
 
+pub trait CellProvider: std::fmt::Debug {
+    fn get_cell(&self, hash: &str) -> Option<&Cell>;
+}
+
 #[derive(Debug, Clone)]
 pub struct Table {
-    pub cells: Vec<Cell>,
-    pub cells_map: HashMap<String, usize>,
-    pub column_widths: Vec<usize>,
-    pub num_columns: usize,
-    pub num_rows: usize,
+    cells: Vec<Cell>,
+    cells_map: HashMap<String, usize>,
+    column_widths: Vec<usize>,
+    num_columns: usize,
 }
 
 impl Default for Table {
@@ -26,23 +31,28 @@ impl Default for Table {
             cells_map: HashMap::new(),
             column_widths: Vec::new(),
             num_columns: 0,
-            num_rows: 0,
         }
     }
 }
 
+impl CellProvider for Table {
+    fn get_cell(&self, hash: &str) -> Option<&Cell> {
+        self.cells_map.get(hash).map(|index| &self.cells[*index])
+    }
+}
+
 impl Table {
-    pub fn new() -> Table {
-        Table {
+    pub fn new() -> Rc<RefCell<Self>> {
+        Rc::new(RefCell::new(Table {
             ..Default::default()
-        }
+        }))
     }
 
-    pub fn from_file(path: &PathBuf) -> Result<Table> {
-        let mut table = Table::new();
+    pub fn from_file(path: &PathBuf) -> Result<Rc<RefCell<Self>>> {
+        let table = Table::new();
         let reader = Self::get_file_reader(&path)?;
 
-        table.fill(reader)?;
+        Table::fill(&table, reader)?;
 
         Ok(table)
     }
@@ -52,11 +62,11 @@ impl Table {
 
         for cell in self.cells.iter() {
             if cell.column == self.num_columns {
-                write!(writer, " {}{}", cell.value, "\n")?;
+                writeln!(writer, "{}", cell.value)?;
             } else {
                 let column_width = self.column_widths[cell.column];
                 let spaces = " ".repeat(column_width - cell.value.len());
-                write!(writer, " {}{} {}", cell.value, spaces, DELIMITER)?;
+                write!(writer, "{}{} {} ", cell.value, spaces, DELIMITER)?;
             }
         }
 
@@ -72,45 +82,43 @@ impl Table {
         Ok(BufReader::new(file))
     }
 
-    fn fill<R: Read>(&mut self, reader: BufReader<R>) -> Result<()> {
+    fn fill<R: Read>(rc: &Rc<RefCell<Self>>, reader: BufReader<R>) -> Result<()> {
+        let mut table = rc.try_borrow_mut()?;
         let mut row = 1;
+
         for line in BufRead::lines(reader) {
             let line = line?;
             let row_cells_map = line.split(DELIMITER).collect::<Vec<&str>>();
 
-            if self.cells_map.is_empty() {
-                self.num_columns = row_cells_map.len();
-                self.column_widths = vec![0; self.num_columns + 1];
+            if table.cells_map.is_empty() {
+                table.num_columns = row_cells_map.len();
+                table.column_widths = vec![0; table.num_columns + 1];
             }
 
-            Self::validate_column_count(row, self.num_columns, row_cells_map.len())?;
+            Self::validate_column_count(row, table.num_columns, row_cells_map.len())?;
 
             let mut column = 1;
             for content in row_cells_map {
-                self.add_cell(row, column, content);
+                let cell = Cell::new(rc, row, column, content.trim());
+                table.add_cell(cell);
                 column += 1;
             }
             row += 1;
         }
 
-        self.num_rows = row;
-
         Ok(())
     }
 
-    fn add_cell(&mut self, row: usize, column: usize, content: &str) {
+    fn add_cell(&mut self, cell: Cell) {
         let index = self.cells.len();
-        let mut cell = Cell::new(row, column, content.trim());
-
-        cell.calculate();
 
         self.cells_map.insert(cell.hash.clone(), index);
-        if let Some(label) = cell.label.clone() {
+        if let Some(label) = cell.label().clone() {
             self.cells_map.insert(label, index);
         }
 
-        if self.column_widths[column] < cell.value.len() {
-            self.column_widths[column] = cell.value.len();
+        if self.column_widths[cell.column] < cell.value.len() {
+            self.column_widths[cell.column] = cell.value.len();
         }
 
         self.cells.push(cell);
@@ -145,26 +153,28 @@ mod tests {
     use super::*;
 
     #[test]
-    fn accepts_consistent_number_of_columns() {
+    fn outputs_aligned_columns() {
         let file_contents = "this | is | an | example \n\
                                csv | file | with | the \n\
                                correct | number | of | columns \n";
 
         let mock_reader = BufReader::new(file_contents.as_bytes());
 
-        let mut table = Table {
-            ..Default::default()
-        };
-        table.fill(mock_reader).unwrap();
+        let table = Table::new();
+        Table::fill(&table, mock_reader).unwrap();
 
         let mut result = Vec::new();
-        table.print(&mut result).unwrap();
+        table.borrow().print(&mut result).unwrap();
+
+        let _string = String::from_utf8(result.clone()).unwrap();
 
         assert_eq!(
             result,
-            b"this|is|an|example\n\
-        csv|file|with|the\n\
-        correct|number|of|columns\n"
+            b"\n\
+            this    | is     | an   | example\n\
+            csv     | file   | with | the\n\
+            correct | number | of   | columns\n\
+            \n"
         );
     }
 
@@ -176,10 +186,8 @@ mod tests {
 
         let mock_reader = BufReader::new(file_contents.as_bytes());
 
-        let mut table = Table {
-            ..Default::default()
-        };
-        let result = table.fill(mock_reader);
+        let table = Table::new();
+        let result = Table::fill(&table, mock_reader);
 
         match result {
             Ok(_) => panic!("Expected error"),
@@ -198,10 +206,8 @@ mod tests {
 
         let mock_reader = BufReader::new(file_contents.as_bytes());
 
-        let mut table = Table {
-            ..Default::default()
-        };
-        let result = table.fill(mock_reader);
+        let table = Table::new();
+        let result = Table::fill(&table, mock_reader);
 
         match result {
             Ok(_) => panic!("Expected error"),
