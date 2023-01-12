@@ -71,12 +71,18 @@ impl Table {
         writeln!(writer)?;
 
         for cell in self.cells.iter() {
+            let value = if cell.formula().is_some() {
+                cell.result().unwrap()
+            } else {
+                cell.value.clone()
+            };
+
             if cell.column == self.num_columns {
-                writeln!(writer, "{}", cell.value)?;
+                writeln!(writer, "{:?}", value)?;
             } else {
                 let column_width = self.column_widths[cell.column];
-                let spaces = " ".repeat(column_width - cell.value.len());
-                write!(writer, "{}{} {} ", cell.value, spaces, DELIMITER)?;
+                let spaces = " ".repeat(column_width - value.len());
+                write!(writer, "{}{} {} ", value, spaces, DELIMITER)?;
             }
         }
 
