@@ -1,37 +1,8 @@
-use crate::spreadsheets::cell::{CellReference, ColumnReference, LabelReference};
+use crate::spreadsheets::grammar::Expression;
 use crate::spreadsheets::lexer::Token;
 
 use anyhow::anyhow;
 use anyhow::Result;
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum Expression {
-    Number(f64),
-    String(String),
-    CellReference(CellReference),
-    LabelReference(LabelReference),
-    ColumnReference(ColumnReference),
-    CellRange {
-        start: CellReference,
-        end: CellReference,
-    },
-    Sum {
-        args: Vec<Expression>,
-    },
-    Difference {
-        args: Vec<Expression>,
-    },
-    Product {
-        args: Vec<Expression>,
-    },
-    Quotient {
-        args: Vec<Expression>,
-    },
-    Function {
-        name: String,
-        args: Vec<Expression>,
-    },
-}
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -39,7 +10,6 @@ pub struct Parser {
 }
 
 impl Parser {
-    // implements a recursive descent parser
     pub fn parse(input: &[Token]) -> Result<Expression> {
         let mut parser = Parser {
             tokens: input.to_vec(),
@@ -200,6 +170,7 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::spreadsheets::grammar::{CellReference, ColumnReference, LabelReference};
 
     #[test]
     fn test_sum_range() {
@@ -208,12 +179,12 @@ mod tests {
             Token::OpenParenthesis,
             Token::CellRange {
                 start: CellReference {
-                    name: String::from("A1"),
+                    hash: String::from("A1"),
                     column: String::from("A"),
                     row: 1,
                 },
                 end: CellReference {
-                    name: String::from("B2"),
+                    hash: String::from("B2"),
                     column: String::from("B"),
                     row: 2,
                 },
@@ -233,12 +204,12 @@ mod tests {
                         name: String::from("sum"),
                         args: vec![Expression::CellRange {
                             start: CellReference {
-                                name: String::from("A1"),
+                                hash: String::from("A1"),
                                 column: String::from("A"),
                                 row: 1,
                             },
                             end: CellReference {
-                                name: String::from("B2"),
+                                hash: String::from("B2"),
                                 column: String::from("B"),
                                 row: 2,
                             },
@@ -256,13 +227,13 @@ mod tests {
             Token::Formula(String::from("sum")),
             Token::OpenParenthesis,
             Token::CellReference(CellReference {
-                name: String::from("A1"),
+                hash: String::from("A1"),
                 column: String::from("A"),
                 row: 1,
             }),
             Token::Comma,
             Token::CellReference(CellReference {
-                name: String::from("A2"),
+                hash: String::from("A2"),
                 column: String::from("A"),
                 row: 2,
             }),
@@ -281,12 +252,12 @@ mod tests {
                         name: String::from("sum"),
                         args: vec![
                             Expression::CellReference(CellReference {
-                                name: String::from("A1"),
+                                hash: String::from("A1"),
                                 column: String::from("A"),
                                 row: 1,
                             }),
                             Expression::CellReference(CellReference {
-                                name: String::from("A2"),
+                                hash: String::from("A2"),
                                 column: String::from("A"),
                                 row: 2,
                             }),
@@ -307,13 +278,13 @@ mod tests {
             Token::Formula(String::from("sum")),
             Token::OpenParenthesis,
             Token::CellReference(CellReference {
-                name: String::from("A1"),
+                hash: String::from("A1"),
                 column: String::from("A"),
                 row: 1,
             }),
             Token::Comma,
             Token::CellReference(CellReference {
-                name: String::from("A2"),
+                hash: String::from("A2"),
                 column: String::from("A"),
                 row: 2,
             }),
@@ -335,12 +306,12 @@ mod tests {
                         name: String::from("sum"),
                         args: vec![
                             Expression::CellReference(CellReference {
-                                name: String::from("A1"),
+                                hash: String::from("A1"),
                                 column: String::from("A"),
                                 row: 1,
                             }),
                             Expression::CellReference(CellReference {
-                                name: String::from("A2"),
+                                hash: String::from("A2"),
                                 column: String::from("A"),
                                 row: 2,
                             }),
@@ -404,20 +375,20 @@ mod tests {
             Token::Formula(String::from("sum")),
             Token::OpenParenthesis,
             Token::CellReference(CellReference {
-                name: String::from("A1"),
+                hash: String::from("A1"),
                 column: String::from("A"),
                 row: 1,
             }),
             Token::Comma,
             Token::CellReference(CellReference {
-                name: String::from("AB2"),
+                hash: String::from("AB2"),
                 column: String::from("AB"),
                 row: 2,
             }),
             Token::CloseParenthesis,
             Token::Plus,
             Token::CopyLastResult(ColumnReference {
-                column: String::from("A"),
+                name: String::from("A"),
             }),
         ];
 
@@ -431,12 +402,12 @@ mod tests {
                         name: String::from("sum"),
                         args: vec![
                             Expression::CellReference(CellReference {
-                                name: String::from("A1"),
+                                hash: String::from("A1"),
                                 column: String::from("A"),
                                 row: 1,
                             }),
                             Expression::CellReference(CellReference {
-                                name: String::from("AB2"),
+                                hash: String::from("AB2"),
                                 column: String::from("AB"),
                                 row: 2,
                             }),
@@ -445,7 +416,7 @@ mod tests {
                     Expression::Function {
                         name: String::from("copy_last_result"),
                         args: vec![Expression::ColumnReference(ColumnReference {
-                            column: String::from("A"),
+                            name: String::from("A"),
                         })]
                     },
                 ],
@@ -457,16 +428,16 @@ mod tests {
     fn test_multiple_copy_last_result() {
         let input = vec![
             Token::CopyLastResult(ColumnReference {
-                column: String::from("E"),
+                name: String::from("E"),
             }),
             Token::Plus,
             Token::OpenParenthesis,
             Token::CopyLastResult(ColumnReference {
-                column: String::from("E"),
+                name: String::from("E"),
             }),
             Token::Multiply,
             Token::CellReference(CellReference {
-                name: String::from("A9"),
+                hash: String::from("A9"),
                 column: String::from("A"),
                 row: 9,
             }),
@@ -482,7 +453,7 @@ mod tests {
                     Expression::Function {
                         name: String::from("copy_last_result"),
                         args: vec![Expression::ColumnReference(ColumnReference {
-                            column: String::from("E"),
+                            name: String::from("E"),
                         })],
                     },
                     Expression::Product {
@@ -490,11 +461,11 @@ mod tests {
                             Expression::Function {
                                 name: String::from("copy_last_result"),
                                 args: vec![Expression::ColumnReference(ColumnReference {
-                                    column: String::from("E"),
+                                    name: String::from("E"),
                                 })],
                             },
                             Expression::CellReference(CellReference {
-                                name: String::from("A9"),
+                                hash: String::from("A9"),
                                 column: String::from("A"),
                                 row: 9,
                             }),
@@ -511,20 +482,20 @@ mod tests {
             Token::Formula(String::from("sum")),
             Token::OpenParenthesis,
             Token::CellReference(CellReference {
-                name: String::from("A1"),
+                hash: String::from("A1"),
                 column: String::from("A"),
                 row: 1,
             }),
             Token::Comma,
             Token::CellReference(CellReference {
-                name: String::from("A2"),
+                hash: String::from("A2"),
                 column: String::from("A"),
                 row: 2,
             }),
             Token::CloseParenthesis,
             Token::Divide,
             Token::CopyAboveResult(ColumnReference {
-                column: String::from("B"),
+                name: String::from("B"),
             }),
         ];
 
@@ -538,12 +509,12 @@ mod tests {
                         name: String::from("sum"),
                         args: vec![
                             Expression::CellReference(CellReference {
-                                name: String::from("A1"),
+                                hash: String::from("A1"),
                                 column: String::from("A"),
                                 row: 1,
                             }),
                             Expression::CellReference(CellReference {
-                                name: String::from("A2"),
+                                hash: String::from("A2"),
                                 column: String::from("A"),
                                 row: 2,
                             }),
@@ -552,7 +523,7 @@ mod tests {
                     Expression::Function {
                         name: String::from("copy_above_result"),
                         args: vec![Expression::ColumnReference(ColumnReference {
-                            column: String::from("B"),
+                            name: String::from("B"),
                         })],
                     },
                 ],
@@ -601,7 +572,7 @@ mod tests {
     fn test_tokenize_copy_above_result_and_nested_formulas() {
         let input = vec![
             Token::CopyAboveResult(ColumnReference {
-                column: String::from("E"),
+                name: String::from("E"),
             }),
             Token::Plus,
             Token::Formula(String::from("sum")),
@@ -609,7 +580,7 @@ mod tests {
             Token::Formula(String::from("split")),
             Token::OpenParenthesis,
             Token::CellReference(CellReference {
-                name: String::from("D3"),
+                hash: String::from("D3"),
                 column: String::from("D"),
                 row: 3,
             }),
@@ -628,7 +599,7 @@ mod tests {
                     Expression::Function {
                         name: String::from("copy_above_result"),
                         args: vec![Expression::ColumnReference(ColumnReference {
-                            column: String::from("E"),
+                            name: String::from("E"),
                         })],
                     },
                     Expression::Function {
@@ -637,7 +608,7 @@ mod tests {
                             name: String::from("split"),
                             args: vec![
                                 Expression::CellReference(CellReference {
-                                    name: String::from("D3"),
+                                    hash: String::from("D3"),
                                     column: String::from("D"),
                                     row: 3,
                                 }),

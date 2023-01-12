@@ -12,7 +12,7 @@ use crate::spreadsheets::cell::Cell;
 const DELIMITER: char = '|';
 
 pub trait CellProvider: std::fmt::Debug {
-    fn get_cell(&self, hash: &str) -> Option<&Cell>;
+    fn cell(&self, hash: &str) -> Option<&Cell>;
 }
 
 #[derive(Debug, Clone)]
@@ -20,7 +20,8 @@ pub struct Table {
     cells: Vec<Cell>,
     cells_map: HashMap<String, usize>,
     column_widths: Vec<usize>,
-    num_columns: usize,
+    pub num_columns: usize,
+    pub num_rows: usize,
 }
 
 impl Default for Table {
@@ -30,12 +31,13 @@ impl Default for Table {
             cells_map: HashMap::new(),
             column_widths: Vec::new(),
             num_columns: 0,
+            num_rows: 0,
         }
     }
 }
 
 impl CellProvider for Table {
-    fn get_cell(&self, hash: &str) -> Option<&Cell> {
+    fn cell(&self, hash: &str) -> Option<&Cell> {
         self.cells_map.get(hash).map(|index| &self.cells[*index])
     }
 }
@@ -50,6 +52,15 @@ impl Table {
     pub fn from_file(path: &PathBuf) -> Result<Rc<RefCell<Self>>> {
         let table = Table::new();
         let reader = Self::get_file_reader(&path)?;
+
+        Table::fill(&table, reader)?;
+
+        Ok(table)
+    }
+
+    pub fn from_string(content: &str) -> Result<Rc<RefCell<Self>>> {
+        let table = Table::new();
+        let reader = BufReader::new(content.as_bytes());
 
         Table::fill(&table, reader)?;
 
@@ -104,6 +115,8 @@ impl Table {
             row += 1;
         }
 
+        table.num_rows = row - 1;
+
         Ok(())
     }
 
@@ -138,23 +151,19 @@ impl Table {
 #[cfg(test)]
 
 mod tests {
-    use super::*;
+    use crate::spreadsheets::table::Table;
 
     #[test]
     fn outputs_aligned_columns() {
         let file_contents = "this | is | an | example \n\
-                               csv | file | with | the \n\
-                               correct | number | of | columns \n";
+        csv | file | with | the \n\
+        correct | number | of | columns \n";
 
-        let mock_reader = BufReader::new(file_contents.as_bytes());
-
-        let table = Table::new();
-        Table::fill(&table, mock_reader).unwrap();
+        let table = Table::from_string(file_contents).unwrap();
+        let table = table.borrow();
 
         let mut result = Vec::new();
-        table.borrow().print(&mut result).unwrap();
-
-        let _string = String::from_utf8(result.clone()).unwrap();
+        table.print(&mut result).unwrap();
 
         assert_eq!(
             result,
@@ -172,10 +181,7 @@ mod tests {
                                csv | file | with | too | many  \n\
                                columns \n";
 
-        let mock_reader = BufReader::new(file_contents.as_bytes());
-
-        let table = Table::new();
-        let result = Table::fill(&table, mock_reader);
+        let result = Table::from_string(file_contents);
 
         match result {
             Ok(_) => panic!("Expected error"),
@@ -192,10 +198,7 @@ mod tests {
                                csv | file | with \n\
                                not | enough | columns \n";
 
-        let mock_reader = BufReader::new(file_contents.as_bytes());
-
-        let table = Table::new();
-        let result = Table::fill(&table, mock_reader);
+        let result = Table::from_string(file_contents);
 
         match result {
             Ok(_) => panic!("Expected error"),

@@ -24,7 +24,7 @@ fn main() -> Result<()> {
     let table = Table::from_file(&args.path)?;
     let table = table.borrow();
 
-    table.print(&mut stdout()).unwrap();
+    table.print(&mut stdout())?;
 
     print_elapsed_time(start);
     Ok(())

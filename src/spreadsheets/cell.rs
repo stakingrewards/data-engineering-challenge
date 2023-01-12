@@ -4,24 +4,6 @@ use std::rc::Rc;
 use crate::spreadsheets::calculator::Calculator;
 use crate::spreadsheets::table::Table;
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct CellReference {
-    pub name: String,
-    pub column: String,
-    pub row: usize, // incrementable
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct LabelReference {
-    pub label: String,
-    pub n_rows: usize,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct ColumnReference {
-    pub column: String,
-}
-
 #[derive(Debug, Clone)]
 pub struct Cell {
     pub table: Rc<RefCell<Table>>,
@@ -66,7 +48,7 @@ impl Cell {
 
     pub fn result(&self) -> Option<String> {
         if self.is_formula() {
-            let result = Calculator::calculate(&self.value[1..]).unwrap();
+            let result = Calculator::calculate(&self).unwrap();
             return Some(result);
         }
 
