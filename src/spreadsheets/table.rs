@@ -264,17 +264,18 @@ mod tests {
         let mut result = Vec::new();
         table.print(&mut result).unwrap();
 
-        assert_eq!(std::str::from_utf8(&result).unwrap(), "\n\
-        !date              | !transaction_id | !tokens     | !token_prices           | !total_cost\n\
-        2022-02-20         | t_1             | btc,eth,dai | 38341.88,2643.77,1.0003 | 40986.65\n\
-        2022-02-21         | t_2             | bch,eth,dai | 304.38,2621.15,1.0001   | 43913.180100000005\n\
-        2022-02-22         | t_3             | sol,eth,dai | 85,2604.17,0.9997       | 46603.3498\n\
-        !fee               | !cost_threshold |             |                         | \n\
-        0.09               | 10000           |             |                         | \n\
-        !adjusted_cost     |                 |             |                         | \n\
-        50797.651282000006 |                 |             |                         | \n\
-        !cost_too_high     |                 |             |                         | \n\
-        true               |                 |             |                         | \n\
+        assert_eq!(
+        std::str::from_utf8(&result).unwrap(), "\n\
+            !date          | !transaction_id | !tokens     | !token_prices           | !total_cost\n\
+            2022-02-20     | t_1             | btc,eth,dai | 38341.88,2643.77,1.0003 | 40986.65\n\
+            2022-02-21     | t_2             | bch,eth,dai | 304.38,2621.15,1.0001   | 43913.18\n\
+            2022-02-22     | t_3             | sol,eth,dai | 85,2604.17,0.9997       | 46603.35\n\
+            !fee           | !cost_threshold |             |                         | \n\
+            0.09           | 10000           |             |                         | \n\
+            !adjusted_cost |                 |             |                         | \n\
+            50797.65       |                 |             |                         | \n\
+            !cost_too_high |                 |             |                         | \n\
+            true           |                 |             |                         | \n\
         \n");
     }
 
@@ -298,16 +299,16 @@ mod tests {
         table.print(&mut result).unwrap();
 
         assert_eq!(std::str::from_utf8(&result).unwrap(), "\n\
-        !date              | !transaction_id | !tokens     | !token_prices           | !total_cost\n\
-        2022-02-20         | t_1             | btc,eth,dai | 38341.88,2643.77,1.0003 | 40986.65\n\
-        2022-02-21         | t_2             | bch,eth,dai | 304.38,2621.15,1.0001   | 43913.180100000005\n\
-        2022-02-22         | t_3             | sol,eth,dai | 85,2604.17,0.9997       | 46603.3498\n\
-        !fee               | !cost_threshold |             |                         | \n\
-        0.09               | 51000           |             |                         | \n\
-        !adjusted_cost     |                 |             |                         | \n\
-        50797.651282000006 |                 |             |                         | \n\
-        !cost_too_high     |                 |             |                         | \n\
-        false              |                 |             |                         | \n\
+            !date          | !transaction_id | !tokens     | !token_prices           | !total_cost\n\
+            2022-02-20     | t_1             | btc,eth,dai | 38341.88,2643.77,1.0003 | 40986.65\n\
+            2022-02-21     | t_2             | bch,eth,dai | 304.38,2621.15,1.0001   | 43913.18\n\
+            2022-02-22     | t_3             | sol,eth,dai | 85,2604.17,0.9997       | 46603.35\n\
+            !fee           | !cost_threshold |             |                         | \n\
+            0.09           | 51000           |             |                         | \n\
+            !adjusted_cost |                 |             |                         | \n\
+            50797.65       |                 |             |                         | \n\
+            !cost_too_high |                 |             |                         | \n\
+            false          |                 |             |                         | \n\
         \n");
     }
 }

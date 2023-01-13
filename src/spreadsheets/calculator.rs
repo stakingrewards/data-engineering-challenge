@@ -146,7 +146,7 @@ mod tests {
         // B^ = 10 (the mock cell is in A4, so B^ is relative to row 4, results in B3)
         // B3 = sum(A1:B2) = 1 + 2 + 3 + 4 = 10
         // 3 / 10 = 0.3
-        assert_eq!(result, String::from("0.3"));
+        assert_eq!(result, String::from("0.30"));
     }
 
     #[test]
@@ -191,6 +191,6 @@ mod tests {
         // sum(1.0,2.1,3.2,4) = 10.3
         // D^ = 1
         // 1 + 10.3 = 11.3
-        assert_eq!(result, String::from("11.3"));
+        assert_eq!(result, String::from("11.30"));
     }
 }
