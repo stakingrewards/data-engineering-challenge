@@ -11,6 +11,7 @@ pub struct Cell {
     pub column: usize,
     pub hash: String,
     pub value: String,
+    result: String,
 }
 
 const LABEL_PREFIX: char = '!';
@@ -28,6 +29,7 @@ impl Cell {
             column,
             hash,
             value,
+            result: String::new(),
         }
     }
 
@@ -41,8 +43,12 @@ impl Cell {
 
     pub fn result(&self) -> String {
         if self.is_formula() {
-            return Calculator::calculate(&self)
-                .expect(format!("invalid formula: {}", self.value).as_str());
+            if self.result.is_empty() {
+                return Calculator::calculate(&self)
+                    .expect(format!("invalid formula: {}", self.value).as_str());
+            } else {
+                return self.result.clone();
+            }
         }
 
         self.value.clone()

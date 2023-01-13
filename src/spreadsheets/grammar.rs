@@ -57,7 +57,13 @@ pub enum Expression {
 impl std::fmt::Display for Expression {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Expression::Number(number) => fmt.write_str(&number.to_string()),
+            Expression::Number(number) => {
+                if number.fract() == 0.0 {
+                    fmt.write_str(&number.to_string())
+                } else {
+                    fmt.write_str(&format!("{:.2}", number))
+                }
+            }
             Expression::String(string) => fmt.write_str(string),
             _ => fmt.write_str("!ERROR!"),
         }
@@ -249,21 +255,39 @@ impl Functions for Expression {
             ));
         }
 
-        let hash = format!("{}{}", get_column_name(cell.column), cell.row - 1);
-        let table = cell.table.borrow();
-        let cell_above = table
-            .cell(&hash)
-            .expect(format!("cell above not found: {}", hash).as_str());
+        let mut formula = String::new();
+        let mut increment_amount = 1;
+        let mut row = cell.row - 1;
+        while row > 0 {
+            let hash = format!("{}{}", get_column_name(cell.column), row);
+            let table = cell.table.borrow();
+            let cell_above = table
+                .cell(&hash)
+                .expect(format!("cell above not found: {}", hash).as_str());
 
-        if cell_above.formula().is_none() {
+            if cell_above.formula().is_none() {
+                return Err(anyhow!(
+                    "copy_and_increments_formula can only refer to cells with a formula"
+                ));
+            }
+
+            if cell_above.value != cell.value {
+                formula = cell_above.value.clone();
+                break;
+            }
+
+            row -= 1;
+            increment_amount += 1;
+        }
+
+        if formula == "" {
             return Err(anyhow!(
-                "copy_and_increments_formula can only refer to cells with a formula"
+                "copy_and_increments_formula could not find a cell with a different formula"
             ));
         }
 
-        let new_cell = Cell::new(&cell.table, cell.row, cell.column, &cell_above.value);
-
-        let tokens = Lexer::tokenize_and_increment(&new_cell.value);
+        let new_cell = Cell::new(&cell.table, cell.row, cell.column, &formula);
+        let tokens = Lexer::tokenize_and_increment(&new_cell.value, increment_amount);
         let expression = Parser::parse(&tokens)?;
 
         expression.evaluate(&new_cell)

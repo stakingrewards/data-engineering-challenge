@@ -39,19 +39,19 @@ pub enum Token {
 }
 
 pub struct Lexer {
-    pub increment: bool,
+    pub increment: usize,
 }
 
 impl Lexer {
     pub fn tokenize(content: &str) -> Vec<Token> {
-        Self::_tokenize(content, false)
+        Self::_tokenize(content, 0)
     }
 
-    pub fn tokenize_and_increment(content: &str) -> Vec<Token> {
-        Self::_tokenize(content, true)
+    pub fn tokenize_and_increment(content: &str, amount: usize) -> Vec<Token> {
+        Self::_tokenize(content, amount)
     }
 
-    fn _tokenize(content: &str, increment: bool) -> Vec<Token> {
+    fn _tokenize(content: &str, increment: usize) -> Vec<Token> {
         if !content.starts_with('=') {
             return vec![Token::String(content.trim().to_string())];
         }
@@ -146,7 +146,7 @@ impl Lexer {
         chars: &mut Peekable<Chars>,
         tokens: &mut Vec<Token>,
         ch: char,
-        increment: bool,
+        increment: usize,
     ) {
         let mut text = String::new();
         let mut column = String::new();
@@ -184,7 +184,7 @@ impl Lexer {
                         "INCFROM" => {
                             tokens.push(Token::Formula(text.to_lowercase()));
 
-                            if increment {
+                            if increment > 0 {
                                 chars.next();
                                 tokens.push(Token::OpenParenthesis);
 
@@ -207,7 +207,7 @@ impl Lexer {
                                     .parse::<f64>()
                                     .expect("cannot parse number in INCFROM lexical analysis");
 
-                                tokens.push(Token::Number(number + 1.0));
+                                tokens.push(Token::Number(number + increment as f64));
                             }
                         }
                         "SUM" | "SPLIT" | "GTE" | "LTE" | "TEXT" | "CONCAT" => {
@@ -254,7 +254,7 @@ impl Lexer {
                             .parse()
                             .expect("cannot parse row number in tokenize_reference_or_formula");
 
-                        if increment {
+                        if increment > 0 {
                             row += 1;
                             text = format!("{}{}", column, row);
                         }
@@ -277,7 +277,7 @@ impl Lexer {
         chars: &mut Peekable<Chars>,
         tokens: &mut Vec<Token>,
         start_cell: CellReference,
-        increment: bool,
+        increment: usize,
     ) {
         if let Some(&c) = chars.peek() {
             match c {
@@ -307,7 +307,7 @@ impl Lexer {
         }
     }
 
-    fn tokenize_cell(chars: &mut Peekable<Chars>, increment: bool) -> CellReference {
+    fn tokenize_cell(chars: &mut Peekable<Chars>, increment: usize) -> CellReference {
         let mut text = String::new();
         let mut column = String::new();
         let mut is_cell_reference = false;
@@ -337,8 +337,8 @@ impl Lexer {
                 .parse()
                 .expect("cannot parse row number in tokenize_cell");
 
-            if increment {
-                row += 1;
+            if increment > 0 {
+                row += increment;
                 text = format!("{}{}", column, row);
             }
 
