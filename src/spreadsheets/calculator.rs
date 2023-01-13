@@ -9,9 +9,10 @@ pub struct Calculator;
 impl Calculator {
     pub fn calculate(cell: &Cell) -> Result<String> {
         let tokens = Lexer::tokenize(&cell.value);
-        let expression = Parser::parse(&tokens).unwrap();
+        let expression = Parser::parse(&tokens)?;
+        let result = expression.evaluate(cell)?;
 
-        expression.evaluate(cell)
+        Ok(result.to_string())
     }
 }
 
@@ -26,27 +27,63 @@ mod tests {
 
     fn mock_table() -> Rc<RefCell<Table>> {
         //                    A              B            C            D
-        let contents = "incFrom(1)   | 3.0        | !total     | !total_plus_1   \n\
-                              ^^           | A1+B^      | A1+B^v     | 1.0             \n\
-                              sum(A1,A2)   | sum(A1:B2) | sum(A3,B3) | @total<2> + 1.0 \n";
+        let contents = "=incFrom(1) | 3.0         | !total      | !total_plus_1    | text,to,split \n\
+                              =^^         | =A1+B^      | =A1+B^v     | 1.0              | 1,2,3,4       \n\
+                              =sum(A1,A2) | =sum(A1:B2) | =sum(A3,B3) | =@total<2> + 1.0 | 1.0,2.1,3.2,4 \n";
 
         Table::from_string(contents).unwrap()
     }
 
     #[test]
-    fn test_calculate_sum_with_range() {
-        let cell = Cell::new(&mock_table(), 0, 0, "=sum(A1:B2) + 1");
+    fn test_copy_and_increment_formula() {
+        let cell = Cell::new(&mock_table(), 2, 1, "=^^");
         let result = Calculator::calculate(&cell).unwrap();
 
-        assert_eq!(result, String::from("11.0")); // 1.0 + 2.0 + 3.0 + 4.0 + 1
+        // ^^ = incFrom(1) = 2
+        assert_eq!(result, String::from("2"));
+    }
+
+    #[test]
+    fn test_copy_and_increment_cell_references() {
+        let cell = Cell::new(&mock_table(), 4, 1, "=^^");
+        let result = Calculator::calculate(&cell).unwrap();
+
+        // ^^ = A3 = sum(A1, A2) => increments to sum(A2, A3)
+        // A1 = 1, A2 = 2, A3 = 3
+        // sum(A2, A3) = 5
+        assert_eq!(result, String::from("5"));
+    }
+
+    #[test]
+    fn test_copy_and_increment_cell_range() {
+        let cell = Cell::new(&mock_table(), 4, 2, "=^^");
+        let result = Calculator::calculate(&cell).unwrap();
+
+        // ^^ = sum(A1:B2) = sum(A2:B3)
+        // sum(A1:A2) = (1 + 2 + 3 + 4) = 10
+        // sum(A2:A3) = (2 + 3 + 4 + 10) = 19
+        assert_eq!(result, String::from("19"));
+    }
+
+    #[test]
+    fn test_calculate_sum_with_range() {
+        let cell = Cell::new(&mock_table(), 2, 4, "=sum(A1:B2) + 1");
+        let result = Calculator::calculate(&cell).unwrap();
+
+        // A1:B2 = (1 + 2 + 3 + 4) = 10
+        // 10 + 1 = 11
+        assert_eq!(result, String::from("11"));
     }
 
     #[test]
     fn test_calculate_sum_with_parameters_and_above_formula() {
-        let cell = Cell::new(&mock_table(), 3, 4, "=sum(A1,A2)-^^");
+        let cell = Cell::new(&mock_table(), 3, 4, "=sum(A1,A2)-D^");
         let result = Calculator::calculate(&cell).unwrap();
 
-        assert_eq!(result, String::from("2.0")); // 1.0 + 2.0 - 1.0
+        // A1 = 1, A2 = 2, total 3,
+        // D^ = 1
+        // 3 - 1 = 2
+        assert_eq!(result, String::from("2"));
     }
 
     #[test]
@@ -54,7 +91,10 @@ mod tests {
         let cell = Cell::new(&mock_table(), 4, 1, "=sum(A1, A2)+@total_plus_1<1>");
         let result = Calculator::calculate(&cell).unwrap();
 
-        assert_eq!(result, String::from("4.0"));
+        // A1 = 1, A2 = 2, total 3,
+        // @total_plus_1<1> = 1
+        // 3 + 1 = 4
+        assert_eq!(result, String::from("4"));
     }
 
     #[test]
@@ -63,27 +103,38 @@ mod tests {
             &mock_table(),
             4,
             1,
-            "=text(gte(@adjusted_cost<1>, @cost_threshold<1>))",
+            "=text(gte(@total<2>, @total_plus_1<2>))",
         );
         let result = Calculator::calculate(&cell).unwrap();
 
-        assert_eq!(result, String::from("3"));
+        // @total<2> = 13, @total_plus_1<2> = 14
+        // 13 >= 14 = false
+        // text(false) = "false" (string)
+        assert_eq!(result, String::from("false"));
     }
 
     #[test]
     fn test_calculate_sum_with_copy_last_result() {
-        let cell = Cell::new(&mock_table(), 4, 1, "=sum( A1,AB2)+A^v");
+        let cell = Cell::new(&mock_table(), 4, 1, "=sum( A1,B2)+A^v");
         let result = Calculator::calculate(&cell).unwrap();
 
-        assert_eq!(result, String::from("3"));
+        // A1 = 1, B2 = 4, total 5,
+        // A^v = sum(A1,A2) = 1 + 2 = 3
+        // 3 + 5 = 8
+        assert_eq!(result, String::from("8"));
     }
 
     #[test]
     fn test_calculate_copy_last_result_twice() {
-        let cell = Cell::new(&mock_table(), 4, 1, "=E^v+(E^v*A9)");
+        let cell = Cell::new(&mock_table(), 1, 1, "=D^v+(D^v*A2)");
         let result = Calculator::calculate(&cell).unwrap();
 
-        assert_eq!(result, String::from("3"));
+        // D^v = sum(A3,B3) + 1
+        //   A3 = sum(A1,A2) = 1 + 2 = 3
+        //   B3 = sum(A1:B2) = 1 + 2 + 3 + 4 = 10
+        // D^v = 3 + 10 + 1 = 14
+        // 14 + (14 * 2) = 42
+        assert_eq!(result, String::from("42"));
     }
 
     #[test]
@@ -91,7 +142,11 @@ mod tests {
         let cell = Cell::new(&mock_table(), 4, 1, "=sum(A1,A2)/B^");
         let result = Calculator::calculate(&cell).unwrap();
 
-        assert_eq!(result, String::from("3"));
+        // A1 = 1, A2 = 2, total 3,
+        // B^ = 10 (the mock cell is in A4, so B^ is relative to row 4, results in B3)
+        // B3 = sum(A1:B2) = 1 + 2 + 3 + 4 = 10
+        // 3 / 10 = 0.3
+        assert_eq!(result, String::from("0.3"));
     }
 
     #[test]
@@ -99,14 +154,43 @@ mod tests {
         let cell = Cell::new(&mock_table(), 4, 1, "=concat(\"t_\", text(incFrom(1)))");
         let result = Calculator::calculate(&cell).unwrap();
 
-        assert_eq!(result, String::from("3"));
+        // incfrom does not increment
+        assert_eq!(result, String::from("t_1"));
     }
 
     #[test]
-    fn test_calculate_sum_with_split() {
-        let cell = Cell::new(&mock_table(), 4, 1, "=E^+sum(split(D3, \",\"))");
+    fn test_calculate_sum_with_text_returns_error() {
+        let cell = Cell::new(&mock_table(), 3, 1, "=D^+sum(split(E1, \",\"))");
         let result = Calculator::calculate(&cell).unwrap();
 
-        assert_eq!(result, String::from("3"));
+        // E1 = split(text,to,split) = "text" "to" "split"
+        // sum("text", "to", "split") = 0
+        // D^ = 1
+        // 1 + 0 = 1
+        assert_eq!(result, String::from("1"));
+    }
+
+    #[test]
+    fn test_calculate_sum_with_split_integers() {
+        let cell = Cell::new(&mock_table(), 3, 1, "=D^+sum(split(E2, \",\"))");
+        let result = Calculator::calculate(&cell).unwrap();
+
+        // E2 = split(1,2,3,4) = 1 2 3 4
+        // sum(1,2,3,4) = 10
+        // D^ = 1
+        // 1 + 10 = 11
+        assert_eq!(result, String::from("11"));
+    }
+
+    #[test]
+    fn test_calculate_sum_with_split_floats() {
+        let cell = Cell::new(&mock_table(), 3, 1, "=D^+sum(split(E3, \",\"))");
+        let result = Calculator::calculate(&cell).unwrap();
+
+        // E3 = split(1.0,2.1,3.2,4) = 1.0 2.1 3.2 4
+        // sum(1.0,2.1,3.2,4) = 10.3
+        // D^ = 1
+        // 1 + 10.3 = 11.3
+        assert_eq!(result, String::from("11.3"));
     }
 }

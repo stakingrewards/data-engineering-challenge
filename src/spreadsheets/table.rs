@@ -15,11 +15,15 @@ pub trait CellProvider: std::fmt::Debug {
     fn cell(&self, hash: &str) -> Option<&Cell>;
 }
 
+struct CellResult {
+    result: String,
+    column: usize,
+}
+
 #[derive(Debug, Clone)]
 pub struct Table {
     cells: Vec<Cell>,
     cells_map: HashMap<String, usize>,
-    column_widths: Vec<usize>,
     pub num_columns: usize,
     pub num_rows: usize,
 }
@@ -29,7 +33,6 @@ impl Default for Table {
         Table {
             cells: Vec::new(),
             cells_map: HashMap::new(),
-            column_widths: Vec::new(),
             num_columns: 0,
             num_rows: 0,
         }
@@ -58,6 +61,7 @@ impl Table {
         Ok(table)
     }
 
+    #[cfg(test)]
     pub fn from_string(content: &str) -> Result<Rc<RefCell<Self>>> {
         let table = Table::new();
         let reader = BufReader::new(content.as_bytes());
@@ -70,19 +74,29 @@ impl Table {
     pub fn print(&self, writer: &mut impl Write) -> Result<()> {
         writeln!(writer)?;
 
-        for cell in self.cells.iter() {
-            let value = if cell.formula().is_some() {
-                cell.result().unwrap()
-            } else {
-                cell.value.clone()
-            };
+        let mut width_of = vec![0; self.num_columns + 1];
 
-            if cell.column == self.num_columns {
-                writeln!(writer, "{:?}", value)?;
+        let results = self
+            .cells
+            .iter()
+            .map(|cell| {
+                let result = cell.result();
+                let column = cell.column;
+                width_of[column] = width_of[column].max(result.len());
+
+                CellResult { result, column }
+            })
+            .collect::<Vec<CellResult>>();
+
+        for result in results {
+            let CellResult { result, column } = result;
+
+            if column == self.num_columns {
+                writeln!(writer, "{}", result)?;
             } else {
-                let column_width = self.column_widths[cell.column];
-                let spaces = " ".repeat(column_width - value.len());
-                write!(writer, "{}{} {} ", value, spaces, DELIMITER)?;
+                let column_width = width_of[column];
+                let spaces = " ".repeat(column_width - result.len());
+                write!(writer, "{}{} {} ", result, spaces, DELIMITER)?;
             }
         }
 
@@ -91,8 +105,7 @@ impl Table {
     }
 
     fn get_file_reader(path: &PathBuf) -> Result<BufReader<File>> {
-        let file =
-            File::open(path).with_context(|| format!("File not found: {}", path.display()))?;
+        let file = File::open(path).context(format!("file not found: {}", path.display()))?;
 
         Ok(BufReader::new(file))
     }
@@ -107,7 +120,6 @@ impl Table {
 
             if table.cells_map.is_empty() {
                 table.num_columns = row_cells_map.len();
-                table.column_widths = vec![0; table.num_columns + 1];
             }
 
             Self::validate_column_count(row, table.num_columns, row_cells_map.len())?;
@@ -134,20 +146,16 @@ impl Table {
             self.cells_map.insert(label, index);
         }
 
-        if self.column_widths[cell.column] < cell.value.len() {
-            self.column_widths[cell.column] = cell.value.len();
-        }
-
         self.cells.push(cell);
     }
 
     fn validate_column_count(line: usize, expected: usize, found: usize) -> Result<()> {
         ensure!(
             expected == found,
-            "invalid column count on line {}. Expected {} but found {}",
-            line,
-            expected,
-            found
+            format!(
+                "invalid column count on line {}. Expected {} but found {}",
+                line, expected, found
+            )
         );
 
         Ok(())
@@ -172,8 +180,8 @@ mod tests {
         table.print(&mut result).unwrap();
 
         assert_eq!(
-            result,
-            b"\n\
+            std::str::from_utf8(&result).unwrap(),
+            "\n\
             this    | is     | an   | example\n\
             csv     | file   | with | the\n\
             correct | number | of   | columns\n\
@@ -182,10 +190,32 @@ mod tests {
     }
 
     #[test]
+    fn outputs_aligned_results() {
+        let file_contents = "=incfrom(999) | results           | will     | align  \n\
+                                   =^^           | 1                 | =100+100 |        \n\
+                                   1             | =incfrom(0) + 1.0 | 1        |        \n";
+
+        let table = Table::from_string(file_contents).unwrap();
+        let table = table.borrow();
+
+        let mut result = Vec::new();
+        table.print(&mut result).unwrap();
+
+        assert_eq!(
+            std::str::from_utf8(&result).unwrap(),
+            "\n\
+            999  | results | will | align\n\
+            1000 | 1       | 200  | \n\
+            1    | 1       | 1    | \n\
+            \n"
+        );
+    }
+
+    #[test]
     fn fails_with_too_many_columns() {
         let file_contents = "this | is | an | example \n\
-                               csv | file | with | too | many  \n\
-                               columns \n";
+                                   csv | file | with | too | many  \n\
+                                   columns \n";
 
         let result = Table::from_string(file_contents);
 
@@ -201,8 +231,8 @@ mod tests {
     #[test]
     fn fails_with_not_enough_columns() {
         let file_contents = "this | is | an | example \n\
-                               csv | file | with \n\
-                               not | enough | columns \n";
+                                   csv | file | with \n\
+                                   not | enough | columns \n";
 
         let result = Table::from_string(file_contents);
 

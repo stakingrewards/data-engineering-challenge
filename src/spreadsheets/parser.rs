@@ -1,4 +1,5 @@
-use crate::spreadsheets::grammar::Expression;
+use crate::spreadsheets::cell::get_column_name;
+use crate::spreadsheets::grammar::{CellReference, Expression};
 use crate::spreadsheets::lexer::Token;
 
 use anyhow::anyhow;
@@ -89,7 +90,30 @@ impl Parser {
             }
             Token::CellRange { start, end } => {
                 self.index += 1;
-                Expression::CellRange { start, end }
+
+                let mut cells = Vec::new();
+
+                let start_row = start.row;
+                let start_column = start.column;
+                let end_row = end.row;
+                let end_column = end.column;
+
+                for row in start_row..=end_row {
+                    for column in start_column..=end_column {
+                        let hash = format!("{}{}", get_column_name(column), row);
+
+                        let cell = Expression::CellReference(CellReference {
+                            hash,
+                            column_name: get_column_name(column),
+                            column,
+                            row,
+                        });
+
+                        cells.push(cell);
+                    }
+                }
+
+                Expression::Collection { expressions: cells }
             }
             Token::LabelReference(label) => {
                 self.index += 1;
@@ -180,12 +204,14 @@ mod tests {
             Token::CellRange {
                 start: CellReference {
                     hash: String::from("A1"),
-                    column: String::from("A"),
+                    column_name: String::from("A"),
+                    column: 1,
                     row: 1,
                 },
                 end: CellReference {
                     hash: String::from("B2"),
-                    column: String::from("B"),
+                    column_name: String::from("B"),
+                    column: 2,
                     row: 2,
                 },
             },
@@ -202,17 +228,33 @@ mod tests {
                 args: vec![
                     Expression::Function {
                         name: String::from("sum"),
-                        args: vec![Expression::CellRange {
-                            start: CellReference {
-                                hash: String::from("A1"),
-                                column: String::from("A"),
-                                row: 1,
-                            },
-                            end: CellReference {
-                                hash: String::from("B2"),
-                                column: String::from("B"),
-                                row: 2,
-                            },
+                        args: vec![Expression::Collection {
+                            expressions: vec![
+                                Expression::CellReference(CellReference {
+                                    hash: String::from("A1"),
+                                    column_name: String::from("A"),
+                                    column: 1,
+                                    row: 1,
+                                }),
+                                Expression::CellReference(CellReference {
+                                    hash: String::from("B1"),
+                                    column_name: String::from("B"),
+                                    column: 2,
+                                    row: 1,
+                                }),
+                                Expression::CellReference(CellReference {
+                                    hash: String::from("A2"),
+                                    column_name: String::from("A"),
+                                    column: 1,
+                                    row: 2,
+                                }),
+                                Expression::CellReference(CellReference {
+                                    hash: String::from("B2"),
+                                    column_name: String::from("B"),
+                                    column: 2,
+                                    row: 2,
+                                })
+                            ],
                         }],
                     },
                     Expression::Number(1.0),
@@ -228,13 +270,15 @@ mod tests {
             Token::OpenParenthesis,
             Token::CellReference(CellReference {
                 hash: String::from("A1"),
-                column: String::from("A"),
+                column_name: String::from("A"),
+                column: 1,
                 row: 1,
             }),
             Token::Comma,
             Token::CellReference(CellReference {
                 hash: String::from("A2"),
-                column: String::from("A"),
+                column_name: String::from("A"),
+                column: 1,
                 row: 2,
             }),
             Token::CloseParenthesis,
@@ -253,12 +297,14 @@ mod tests {
                         args: vec![
                             Expression::CellReference(CellReference {
                                 hash: String::from("A1"),
-                                column: String::from("A"),
+                                column_name: String::from("A"),
+                                column: 1,
                                 row: 1,
                             }),
                             Expression::CellReference(CellReference {
                                 hash: String::from("A2"),
-                                column: String::from("A"),
+                                column_name: String::from("A"),
+                                column: 1,
                                 row: 2,
                             }),
                         ],
@@ -279,13 +325,15 @@ mod tests {
             Token::OpenParenthesis,
             Token::CellReference(CellReference {
                 hash: String::from("A1"),
-                column: String::from("A"),
+                column_name: String::from("A"),
+                column: 1,
                 row: 1,
             }),
             Token::Comma,
             Token::CellReference(CellReference {
                 hash: String::from("A2"),
-                column: String::from("A"),
+                column_name: String::from("A"),
+                column: 1,
                 row: 2,
             }),
             Token::CloseParenthesis,
@@ -307,12 +355,14 @@ mod tests {
                         args: vec![
                             Expression::CellReference(CellReference {
                                 hash: String::from("A1"),
-                                column: String::from("A"),
+                                column_name: String::from("A"),
+                                column: 1,
                                 row: 1,
                             }),
                             Expression::CellReference(CellReference {
                                 hash: String::from("A2"),
-                                column: String::from("A"),
+                                column_name: String::from("A"),
+                                column: 1,
                                 row: 2,
                             }),
                         ],
@@ -376,13 +426,15 @@ mod tests {
             Token::OpenParenthesis,
             Token::CellReference(CellReference {
                 hash: String::from("A1"),
-                column: String::from("A"),
+                column_name: String::from("A"),
+                column: 1,
                 row: 1,
             }),
             Token::Comma,
             Token::CellReference(CellReference {
                 hash: String::from("AB2"),
-                column: String::from("AB"),
+                column_name: String::from("AB"),
+                column: 28,
                 row: 2,
             }),
             Token::CloseParenthesis,
@@ -403,12 +455,14 @@ mod tests {
                         args: vec![
                             Expression::CellReference(CellReference {
                                 hash: String::from("A1"),
-                                column: String::from("A"),
+                                column_name: String::from("A"),
+                                column: 1,
                                 row: 1,
                             }),
                             Expression::CellReference(CellReference {
                                 hash: String::from("AB2"),
-                                column: String::from("AB"),
+                                column_name: String::from("AB"),
+                                column: 28,
                                 row: 2,
                             }),
                         ],
@@ -438,7 +492,8 @@ mod tests {
             Token::Multiply,
             Token::CellReference(CellReference {
                 hash: String::from("A9"),
-                column: String::from("A"),
+                column_name: String::from("A"),
+                column: 1,
                 row: 9,
             }),
             Token::CloseParenthesis,
@@ -466,7 +521,8 @@ mod tests {
                             },
                             Expression::CellReference(CellReference {
                                 hash: String::from("A9"),
-                                column: String::from("A"),
+                                column_name: String::from("A"),
+                                column: 1,
                                 row: 9,
                             }),
                         ],
@@ -483,13 +539,15 @@ mod tests {
             Token::OpenParenthesis,
             Token::CellReference(CellReference {
                 hash: String::from("A1"),
-                column: String::from("A"),
+                column_name: String::from("A"),
+                column: 1,
                 row: 1,
             }),
             Token::Comma,
             Token::CellReference(CellReference {
                 hash: String::from("A2"),
-                column: String::from("A"),
+                column_name: String::from("A"),
+                column: 1,
                 row: 2,
             }),
             Token::CloseParenthesis,
@@ -510,12 +568,14 @@ mod tests {
                         args: vec![
                             Expression::CellReference(CellReference {
                                 hash: String::from("A1"),
-                                column: String::from("A"),
+                                column_name: String::from("A"),
+                                column: 1,
                                 row: 1,
                             }),
                             Expression::CellReference(CellReference {
                                 hash: String::from("A2"),
-                                column: String::from("A"),
+                                column_name: String::from("A"),
+                                column: 1,
                                 row: 2,
                             }),
                         ],
@@ -581,7 +641,8 @@ mod tests {
             Token::OpenParenthesis,
             Token::CellReference(CellReference {
                 hash: String::from("D3"),
-                column: String::from("D"),
+                column_name: String::from("D"),
+                column: 4,
                 row: 3,
             }),
             Token::Comma,
@@ -609,7 +670,8 @@ mod tests {
                             args: vec![
                                 Expression::CellReference(CellReference {
                                     hash: String::from("D3"),
-                                    column: String::from("D"),
+                                    column_name: String::from("D"),
+                                    column: 4,
                                     row: 3,
                                 }),
                                 Expression::String(String::from(",")),

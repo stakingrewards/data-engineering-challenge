@@ -1,5 +1,6 @@
 use std::{iter::Peekable, str::Chars};
 
+use crate::spreadsheets::cell::get_column_number;
 use crate::spreadsheets::grammar::{CellReference, ColumnReference, LabelReference};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -51,9 +52,12 @@ impl Lexer {
     }
 
     fn _tokenize(content: &str, increment: bool) -> Vec<Token> {
+        if !content.starts_with('=') {
+            return vec![Token::String(content.trim().to_string())];
+        }
+
         let mut tokens = Vec::new();
         let mut chars = content.chars().peekable();
-
         while let Some(c) = chars.next() {
             match c {
                 '+' => tokens.push(Token::Plus),
@@ -106,6 +110,7 @@ impl Lexer {
     fn tokenize_label_reference(chars: &mut Peekable<Chars>, tokens: &mut Vec<Token>) {
         let mut label = String::new();
         let mut n_rows = String::new();
+        let mut is_label = true;
 
         while let Some(c) = chars.next() {
             match c {
@@ -113,21 +118,27 @@ impl Lexer {
                     label.push(c);
                 }
                 '0'..='9' => {
-                    n_rows.push(c);
+                    if is_label {
+                        label.push(c);
+                    } else {
+                        n_rows.push(c);
+                    }
                 }
-                '<' => (),
+                '<' => is_label = false,
                 '>' => break,
-                _ => panic!("Invalid label reference"),
+                _ => panic!("invalid label reference token"),
             }
         }
 
         if label == "" || n_rows == "" {
-            panic!("Invalid label reference");
+            panic!("empty label reference or number of rows to shift");
         }
 
         tokens.push(Token::LabelReference(LabelReference {
             label: label.to_lowercase(),
-            n_rows: n_rows.parse().unwrap(),
+            n_rows: n_rows
+                .parse()
+                .expect("cannot parse number of rows to shift"),
         }));
     }
 
@@ -174,12 +185,14 @@ impl Lexer {
                             tokens.push(Token::Formula(text.to_lowercase()));
 
                             if increment {
+                                chars.next();
+                                tokens.push(Token::OpenParenthesis);
+
                                 let mut number = String::new();
 
                                 while let Some(&c) = chars.peek() {
                                     match c {
                                         ')' => {
-                                            chars.next();
                                             break;
                                         }
                                         '0'..='9' | '.' => {
@@ -190,7 +203,10 @@ impl Lexer {
                                     }
                                 }
 
-                                let number = number.parse::<f64>().unwrap();
+                                let number = number
+                                    .parse::<f64>()
+                                    .expect("cannot parse number in INCFROM lexical analysis");
+
                                 tokens.push(Token::Number(number + 1.0));
                             }
                         }
@@ -234,15 +250,19 @@ impl Lexer {
 
                 _ => {
                     if is_cell_reference {
-                        let mut row = text[column.len()..].parse().unwrap();
+                        let mut row = text[column.len()..]
+                            .parse()
+                            .expect("cannot parse row number in tokenize_reference_or_formula");
 
                         if increment {
                             row += 1;
+                            text = format!("{}{}", column, row);
                         }
 
                         let start_cell = CellReference {
                             hash: text,
-                            column,
+                            column_name: column.clone(),
+                            column: get_column_number(&column),
                             row,
                         };
                         Self::tokenize_cell_or_range(chars, tokens, start_cell, increment);
@@ -313,15 +333,19 @@ impl Lexer {
         }
 
         if is_cell_reference {
-            let mut row = text[column.len()..].parse().unwrap();
+            let mut row = text[column.len()..]
+                .parse()
+                .expect("cannot parse row number in tokenize_cell");
 
             if increment {
                 row += 1;
+                text = format!("{}{}", column, row);
             }
 
             CellReference {
                 hash: text,
-                column,
+                column_name: column.clone(),
+                column: get_column_number(&column),
                 row,
             }
         } else {
@@ -343,7 +367,9 @@ impl Lexer {
             }
         }
 
-        tokens.push(Token::Number(number.parse::<f64>().unwrap()));
+        tokens.push(Token::Number(
+            number.parse::<f64>().expect("cannot parse number"),
+        ));
     }
 }
 
@@ -351,7 +377,7 @@ fn uppercase_char(c: char) -> char {
     c.to_uppercase()
         .collect::<Vec<char>>()
         .first()
-        .unwrap()
+        .expect("cannot uppercase char")
         .to_owned()
 }
 
@@ -372,12 +398,14 @@ mod tests {
                 Token::CellRange {
                     start: CellReference {
                         hash: String::from("A1"),
-                        column: String::from("A"),
+                        column_name: String::from("A"),
+                        column: 1,
                         row: 1
                     },
                     end: CellReference {
                         hash: String::from("A2"),
-                        column: String::from("A"),
+                        column_name: String::from("A"),
+                        column: 1,
                         row: 2
                     }
                 },
@@ -400,13 +428,15 @@ mod tests {
                 Token::OpenParenthesis,
                 Token::CellReference(CellReference {
                     hash: String::from("A1"),
-                    column: String::from("A"),
+                    column_name: String::from("A"),
+                    column: 1,
                     row: 1
                 }),
                 Token::Comma,
                 Token::CellReference(CellReference {
                     hash: String::from("A2"),
-                    column: String::from("A"),
+                    column_name: String::from("A"),
+                    column: 1,
                     row: 2
                 }),
                 Token::CloseParenthesis,
@@ -417,8 +447,8 @@ mod tests {
     }
 
     #[test]
-    fn test_tokenize_label_reference() {
-        let content = String::from("=sum(A1, A2)+@label<2>");
+    fn test_tokenize_label_reference_with_number() {
+        let content = String::from("=sum(A1, A2)+@label_1<2>");
         let tokens = Lexer::tokenize(&content);
 
         assert_eq!(
@@ -428,19 +458,21 @@ mod tests {
                 Token::OpenParenthesis,
                 Token::CellReference(CellReference {
                     hash: String::from("A1"),
-                    column: String::from("A"),
+                    column_name: String::from("A"),
+                    column: 1,
                     row: 1
                 }),
                 Token::Comma,
                 Token::CellReference(CellReference {
                     hash: String::from("A2"),
-                    column: String::from("A"),
+                    column_name: String::from("A"),
+                    column: 1,
                     row: 2
                 }),
                 Token::CloseParenthesis,
                 Token::Plus,
                 Token::LabelReference(LabelReference {
-                    label: String::from("label"),
+                    label: String::from("label_1"),
                     n_rows: 2,
                 }),
             ]
@@ -486,13 +518,15 @@ mod tests {
                 Token::OpenParenthesis,
                 Token::CellReference(CellReference {
                     hash: String::from("A1"),
-                    column: String::from("A"),
+                    column_name: String::from("A"),
+                    column: 1,
                     row: 1
                 }),
                 Token::Comma,
                 Token::CellReference(CellReference {
                     hash: String::from("AB2"),
-                    column: String::from("AB"),
+                    column_name: String::from("AB"),
+                    column: 28,
                     row: 2
                 }),
                 Token::CloseParenthesis,
@@ -523,7 +557,8 @@ mod tests {
                 Token::Multiply,
                 Token::CellReference(CellReference {
                     hash: String::from("A9"),
-                    column: String::from("A"),
+                    column_name: String::from("A"),
+                    column: 1,
                     row: 9
                 }),
                 Token::CloseParenthesis,
@@ -543,13 +578,15 @@ mod tests {
                 Token::OpenParenthesis,
                 Token::CellReference(CellReference {
                     hash: String::from("A1"),
-                    column: String::from("A"),
+                    column_name: String::from("A"),
+                    column: 1,
                     row: 1
                 }),
                 Token::Comma,
                 Token::CellReference(CellReference {
                     hash: String::from("A2"),
-                    column: String::from("A"),
+                    column_name: String::from("A"),
+                    column: 1,
                     row: 2
                 }),
                 Token::CloseParenthesis,
@@ -603,7 +640,8 @@ mod tests {
                 Token::OpenParenthesis,
                 Token::CellReference(CellReference {
                     hash: String::from("D3"),
-                    column: String::from("D"),
+                    column_name: String::from("D"),
+                    column: 4,
                     row: 3
                 }),
                 Token::Comma,
