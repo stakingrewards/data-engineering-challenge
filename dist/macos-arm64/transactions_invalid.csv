@@ -4,7 +4,7 @@
 2022-02-22|=^^|sol,eth,dai|85,2604.17,0.9997|=^^
 !fee|!cost_threshold|||
 0.09|10000|||
-!adjusted_cost||||
+!adjusted_cost|||
 =E^v+(E^v*A6)||||
 !cost_too_high||||
 =text(gte(@adjusted_cost<1>, @cost_threshold<1>))||||

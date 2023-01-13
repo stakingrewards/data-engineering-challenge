@@ -3,7 +3,7 @@
 2022-02-21|=^^|bch,eth,dai|304.38,2621.15,1.0001|=E^+sum(split(D3, ","))
 2022-02-22|=^^|sol,eth,dai|85,2604.17,0.9997|=^^
 !fee|!cost_threshold|||
-0.09|10000|||
+0.09|51000|||
 !adjusted_cost||||
 =E^v+(E^v*A6)||||
 !cost_too_high||||

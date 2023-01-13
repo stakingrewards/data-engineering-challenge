@@ -22,7 +22,7 @@ language is very similar to excel formulas, it supports basic arithmetic express
 as well as function calls that provide additional features like comparisons,
 string concatenations and other useful utility functions.
 
-**Operations**
+#### Operations
 
 - `^^` Copies the formula from the cell above in the same column, with some special evaluation rules
 - `(A..Z)n` references a cell by a combination of a column-letter+row-number. Ex: A2 B3
