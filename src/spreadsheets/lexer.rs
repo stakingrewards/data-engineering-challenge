@@ -1,7 +1,7 @@
 use std::{iter::Peekable, str::Chars};
 
 use crate::spreadsheets::cell::get_column_number;
-use crate::spreadsheets::grammar::{CellReference, ColumnReference, LabelReference};
+use crate::spreadsheets::expression::{CellReference, ColumnReference, LabelReference};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {

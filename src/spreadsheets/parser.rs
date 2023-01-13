@@ -1,5 +1,5 @@
 use crate::spreadsheets::cell::get_column_name;
-use crate::spreadsheets::grammar::{CellReference, Expression};
+use crate::spreadsheets::expression::{CellReference, Expression};
 use crate::spreadsheets::lexer::Token;
 
 use anyhow::anyhow;
@@ -194,7 +194,7 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::spreadsheets::grammar::{CellReference, ColumnReference, LabelReference};
+    use crate::spreadsheets::expression::{CellReference, ColumnReference, LabelReference};
 
     #[test]
     fn test_sum_range() {

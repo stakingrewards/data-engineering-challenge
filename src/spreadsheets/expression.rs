@@ -1,10 +1,9 @@
 use crate::spreadsheets::cell::{get_column_name, Cell};
 use crate::spreadsheets::lexer::Lexer;
 use crate::spreadsheets::parser::Parser;
+use crate::spreadsheets::table::CellProvider;
 
 use anyhow::{anyhow, Result};
-
-use super::table::CellProvider;
 
 trait Functions {
     fn sum(&self, cell: &Cell, args: &[Expression]) -> Result<Expression>;
