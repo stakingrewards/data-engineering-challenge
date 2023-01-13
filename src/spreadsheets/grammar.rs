@@ -64,7 +64,16 @@ impl std::fmt::Display for Expression {
                     fmt.write_str(&format!("{:.2}", number))
                 }
             }
-            Expression::String(string) => fmt.write_str(string),
+            Expression::String(string) => match string.parse::<f64>() {
+                Ok(number) => {
+                    if number.fract() == 0.0 {
+                        fmt.write_str(&number.to_string())
+                    } else {
+                        fmt.write_str(&format!("{:.2}", number))
+                    }
+                }
+                Err(_) => fmt.write_str(string),
+            },
             _ => fmt.write_str("!ERROR!"),
         }
     }
