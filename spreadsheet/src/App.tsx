@@ -1,13 +1,22 @@
-import Header from './components/header';
-import SpreadsheetData from './components/spread-sheet-data/spread-sheet-data';
+import { useState } from 'react';
+import Search from './components/search/search';
+import Spreadsheet from './components/spreadsheet/spreadsheet';
 
-function App() {
+const App = () => {
+  const [inputValue, setInputValue] = useState('');
+
+  console.log(inputValue);
+
   return (
-    <main>
-      <Header />
-      <SpreadsheetData />
-    </main>
+    <>
+      <Search
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+          setInputValue(e.target.value);
+        }}
+      />
+      <Spreadsheet rows={50} columns={3} />
+    </>
   );
-}
+};
 
 export default App;
