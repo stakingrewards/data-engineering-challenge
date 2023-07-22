@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import Search from './components/search/search';
 import Spreadsheet from './components/spreadsheet/spreadsheet';
+import { Alerts } from './components/alerts/alerts';
+import { NotificationWrapper } from './context/notificationContext';
 
 const App = () => {
   const [inputValue, setInputValue] = useState('');
@@ -8,14 +10,18 @@ const App = () => {
   console.log(inputValue);
 
   return (
-    <>
-      <Search
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-          setInputValue(e.target.value);
-        }}
-      />
-      <Spreadsheet rows={50} columns={3} />
-    </>
+    <NotificationWrapper>
+      <main>
+        <Search
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+            setInputValue(e.target.value);
+          }}
+        />
+        <Spreadsheet rows={50} columns={3} />
+
+        <Alerts />
+      </main>
+    </NotificationWrapper>
   );
 };
 

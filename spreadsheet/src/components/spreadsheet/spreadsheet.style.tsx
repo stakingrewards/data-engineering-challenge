@@ -44,6 +44,15 @@ export const TableBody = styled.tbody`
     height: 2rem;
     margin-bottom: 0.25rem;
 
+    &.error {
+      border: 2px solid #af3434;
+      border-radius: 4px;
+
+      input {
+        background-color: rgba(175, 52, 52, 0.25);
+      }
+    }
+
     td {
       height: 100%;
 
