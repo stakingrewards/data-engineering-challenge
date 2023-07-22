@@ -11,7 +11,7 @@ export const Alerts = () => {
   return (
     <AlertBlock>
       <AlertWrapper
-        key={notificationSelected.uid}
+        key={notificationSelected.title}
         type_of_message={notificationSelected.type_of_message}
       >
         <p>{notificationSelected.title}</p>

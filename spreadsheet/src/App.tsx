@@ -5,9 +5,8 @@ import { Alerts } from './components/alerts/alerts';
 import { NotificationWrapper } from './context/notificationContext';
 
 const App = () => {
-  const [inputValue, setInputValue] = useState('');
-
-  console.log(inputValue);
+  // It's for the search component, but it's not used
+  const [, setInputValue] = useState('');
 
   return (
     <NotificationWrapper>

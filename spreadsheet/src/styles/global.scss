@@ -1,5 +1,18 @@
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap');
 
+:root {
+  --text-colour: #262626;
+  --color-black: #000;
+  --color-black-transparent: rgba(0, 0, 0, 0.3);
+  --color-red: #af3434;
+  --color-red-transparent: rgba(175, 52, 52, 0.25);
+  --color-white: #fafafa;
+  --color-gray: #efefef;
+  --color-searchBox-gray: #f3f3f3;
+  --color-green: #0b6d05;
+  --color-scrollBar: #161616;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -45,6 +58,6 @@ body {
 
 /* Handle */
 ::-webkit-scrollbar-thumb {
-  background: #161616;
+  background: var(--color-scrollBar);
   border-radius: 5px;
 }

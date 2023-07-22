@@ -13,11 +13,12 @@ export const TableHead = styled.thead`
   }
 
   tr {
+    height: 2rem;
+
     display: flex;
     align-items: center;
 
-    height: 2rem;
-    background-color: #efefef;
+    background-color: var(--color-gray);
 
     th {
       input {
@@ -38,31 +39,24 @@ export const TableHead = styled.thead`
 
 export const TableBody = styled.tbody`
   tr {
+    height: 2rem;
+
     display: flex;
     align-items: center;
 
-    height: 2rem;
     margin-bottom: 0.25rem;
 
     &.error {
-      border: 2px solid #af3434;
+      border: 2px solid var(--color-red);
       border-radius: 4px;
 
       input {
-        background-color: rgba(175, 52, 52, 0.25);
+        background-color: var(--color-red-transparent);
       }
     }
 
     td {
       height: 100%;
-
-      input {
-        border: none;
-        background-color: #fafafa;
-        height: 100%;
-        width: 100%;
-        text-align: center;
-      }
 
       &:nth-child(1),
       &:nth-child(2) {
@@ -74,7 +68,7 @@ export const TableBody = styled.tbody`
           content: '';
           width: 0.38px;
           height: 87.5%;
-          background-color: rgba(0, 0, 0, 0.3);
+          background-color: var(--color-black-transparent);
           top: 0.125rem;
           right: 0;
         }
@@ -85,4 +79,19 @@ export const TableBody = styled.tbody`
       }
     }
   }
+`;
+
+export const TableInput = styled.input<{
+  icon: string;
+}>`
+  height: 100%;
+  width: 100%;
+
+  text-align: center;
+  border: none;
+
+  background-color: var(--color-white);
+  background-image: url(${(props) => props.icon});
+  background-repeat: no-repeat;
+  background-position: 98% 85%;
 `;

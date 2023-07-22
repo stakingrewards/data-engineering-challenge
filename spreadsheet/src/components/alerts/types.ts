@@ -5,7 +5,6 @@ export enum TypeOfMessage {
 }
 
 export interface INotificationMessage {
-  uid: string;
   title: string;
   type_of_message: TypeOfMessage;
 }
